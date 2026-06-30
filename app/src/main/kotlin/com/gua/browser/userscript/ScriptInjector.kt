@@ -121,9 +121,9 @@ class ScriptInjector(private val context: Context) {
         val matchesJson = buildJsonArray(script.matches + script.includes)
         val excludesJson = buildJsonArray(script.excludes)
         val runAt = when (script.runAt) {
-            UserScript.RunAt.DOCUMENT_START -> "document_start"
-            UserScript.RunAt.DOCUMENT_END -> "document_end"
-            UserScript.RunAt.DOCUMENT_IDLE -> "document_idle"
+            RunAt.DOCUMENT_START -> "document_start"
+            RunAt.DOCUMENT_END -> "document_end"
+            RunAt.DOCUMENT_IDLE -> "document_idle"
         }
 
         val manifest = buildString {

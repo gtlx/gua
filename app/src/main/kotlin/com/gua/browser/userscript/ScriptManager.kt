@@ -2,7 +2,9 @@ package com.gua.browser.userscript
 
 import android.content.Context
 import android.util.Log
+import com.gua.browser.core.network.HttpClient
 import com.gua.browser.userscript.gmapi.GMApiBridge
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.StateFlow
 import org.mozilla.geckoview.WebExtensionController
 
@@ -62,25 +64,17 @@ class ScriptManager(private val context: Context) {
      * 从 GreasyFork 等 URL 安装脚本
      */
     fun installFromUrl(url: String, onComplete: (UserScript?) -> Unit) {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                val response = com.gua.browser.core.network.HttpClient.execute(
-                    com.gua.browser.core.network.HttpClient.Request(url = url)
-                )
+                val response = HttpClient.execute(HttpClient.Request(url = url))
                 if (response.statusCode == 200) {
                     val script = installFromCode(response.body)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        onComplete(script)
-                    }
+                    withContext(Dispatchers.Main) { onComplete(script) }
                 } else {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        onComplete(null)
-                    }
+                    withContext(Dispatchers.Main) { onComplete(null) }
                 }
             } catch (e: Exception) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    onComplete(null)
-                }
+                withContext(Dispatchers.Main) { onComplete(null) }
             }
         }
     }
