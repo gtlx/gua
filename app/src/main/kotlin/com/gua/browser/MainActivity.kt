@@ -388,17 +388,18 @@ fun GuaBrowserTheme(
 
             // 安全锁图标
             val lockColor = if (isSecure) Color(0xFF0D904F) else Color(0xFF9E9E9E)
-            Icon(
-                painter = if (isSecure)
-                    painterResource(android.R.drawable.ic_lock_lock)
-                else
-                    painterResource(android.R.drawable.ic_lock_idle_lock),
-                contentDescription = if (isSecure) "安全连接" else "不安全连接",
-                tint = lockColor,
+            Box(
                 modifier = Modifier
                     .size(16.dp)
                     .clickable { }
-            )
+                    .background(lockColor.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isSecure) "🔒" else "🔓",
+                    fontSize = 10.sp
+                )
+            }
 
             Spacer(modifier = Modifier.width(4.dp))
 
