@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
                         )
 
                         // 加载进度条
-                        AnimatedVisibility(
+                        androidx.compose.animation.AnimatedVisibility(
                             visible = state.progress in 1..99,
                             enter = fadeIn(),
                             exit = fadeOut()
@@ -378,9 +378,9 @@ class MainActivity : ComponentActivity() {
             Spacer(modifier = Modifier.width(4.dp))
 
             // 地址输入框
+            val displayText = if (isFocused) urlText else urlText.ifEmpty { "" }
             OutlinedTextField(
-                value = if (isFocused) urlText
-                        else urlText.ifEmpty { "" },
+                value = displayText,
                 onValueChange = onUrlChange,
                 modifier = Modifier.weight(1f),
                 placeholder = {
