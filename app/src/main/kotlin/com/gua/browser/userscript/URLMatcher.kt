@@ -11,7 +11,7 @@ package com.gua.browser.userscript
  *   - *.ext    匹配任意域名 + 特定扩展名
  *   - *://*/*  任意协议 + 任意域名 + 任意路径
  *   - https://www.google.com/  === 精确匹配
- *   - *://*.example.com/baz/*  带子域名
+ *   - *://*.example.com/baz/  带子域名
  */
 object URLMatcher {
 
