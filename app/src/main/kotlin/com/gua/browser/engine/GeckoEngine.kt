@@ -53,17 +53,8 @@ class GeckoEngine(
                 pageListener?.onFullScreenChanged(fullScreen)
             }
 
-            override fun onExternalResponse(session: GeckoSession, response: GeckoSession.WebResponseInfo) {
-                navigationListener?.onDownloadStart(
-                    url = response.uri,
-                    contentType = response.contentType ?: "",
-                    contentLength = response.contentLength
-                )
-            }
-
             override fun onCrash(session: GeckoSession) {
                 session.open(runtime)
-                sessionState?.let { session.restoreState(it) }
             }
         }
 
@@ -83,7 +74,7 @@ class GeckoEngine(
                 navigationListener?.onBackForwardChanged(_canGoBack, canGoForward)
             }
 
-            override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
+            override fun onLoadRequest(session: GeckoSession, request: LoadRequest): GeckoResult<AllowOrDeny>? {
                 val allow = navigationListener?.onLoadRequest(request.uri) ?: true
                 return GeckoResult.fromValue(if (allow) AllowOrDeny.ALLOW else AllowOrDeny.DENY)
             }
@@ -111,12 +102,8 @@ class GeckoEngine(
         }
 
         geckoSession.permissionDelegate = object : GeckoSession.PermissionDelegate {
-            override fun onContentPermissionRequest(session: GeckoSession, permission: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
+            override fun onContentPermissionRequest(session: GeckoSession, perm: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
                 return GeckoResult.fromValue(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW)
-            }
-
-            override fun onAndroidPermissionRequest(session: GeckoSession, permissions: Array<out String>): GeckoResult<Int>? {
-                return GeckoResult.fromValue(GeckoSession.PermissionDelegate.PERMISSION_DENY)
             }
         }
 
@@ -146,7 +133,9 @@ class GeckoEngine(
     override fun canGoForward(): Boolean = _canGoForward
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
-        geckoSession.evaluateJavascript(script) { result -> callback?.invoke(result) }
+        try {
+            geckoSession.evaluateJavascript(script) { result -> callback?.invoke(result) }
+        } catch (_: Exception) {}
     }
 
     override fun applySettings(settings: EngineSettings) {
