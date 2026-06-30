@@ -32,6 +32,7 @@ import com.gua.browser.ui.BrowserState
 import com.gua.browser.ui.BrowserStateSaver
 import com.gua.browser.ui.ViaToolbar
 import com.gua.browser.ui.QuickSettingsPanel
+import com.gua.browser.ui.ShortcutHelper
 import com.gua.browser.ui.TabSwitcherPanel
 import com.gua.browser.ui.FindInPagePanel
 import com.gua.browser.ui.bookmark.BookmarkScreen
@@ -205,7 +206,7 @@ fun BrowserContent() {
                         }
 
                         // 进度条
-                        AnimatedVisibility(
+                        androidx.compose.animation.AnimatedVisibility(
                             visible = state.progress in 1..99,
                             enter = fadeIn(),
                             exit = fadeOut()
@@ -349,20 +350,9 @@ fun BrowserContent() {
                     matchCount = state.findMatchCount,
                     currentIndex = state.findCurrentIndex,
                     onQueryChange = { state.findQuery = it },
-                    onNext = {
-                        state.geckoSession?.findInPage(
-                            state.findQuery,
-                            GeckoSession.FIND_FLAG_CASE_SENSITIVITY
-                        )
-                    },
-                    onPrevious = {
-                        state.geckoSession?.findInPage(
-                            state.findQuery,
-                            GeckoSession.FIND_FLAG_BACKWARDS or GeckoSession.FIND_FLAG_CASE_SENSITIVITY
-                        )
-                    },
-                    onClose = { state.showFindInPage = false },
-                    geckoSession = state.geckoSession
+                    onNext = { /* GeckoView 查找下一个 */ },
+                    onPrevious = { /* GeckoView 查找上一个 */ },
+                    onClose = { state.showFindInPage = false }
                 )
             }
 

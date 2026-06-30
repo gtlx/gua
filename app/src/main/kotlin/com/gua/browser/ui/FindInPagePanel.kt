@@ -19,12 +19,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.mozilla.geckoview.GeckoSession
-
 /**
  * 页面查找面板 — Via 风格
- *
- * 通过 GeckoSession.findInPage() 实现查找功能。
  */
 @Composable
 fun FindInPagePanel(
@@ -36,17 +32,8 @@ fun FindInPagePanel(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onClose: () -> Unit,
-    geckoSession: GeckoSession? = null,
     modifier: Modifier = Modifier
 ) {
-    // 自动将查询文本同步到 GeckoView 查找
-    LaunchedEffect(query) {
-        if (query.isNotEmpty()) {
-            geckoSession?.findInPage(query, GeckoSession.FIND_FLAG_CASE_SENSITIVITY or GeckoSession.FIND_FLAG_LINKS_ONLY)
-        } else {
-            geckoSession?.clearMatches()
-        }
-    }
 
     AnimatedVisibility(
         visible = visible,

@@ -7,6 +7,9 @@ import androidx.compose.runtime.setValue
 import com.gua.browser.engine.EngineManager
 import com.gua.browser.engine.EngineSettings
 import com.gua.browser.engine.GeckoEngine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.mozilla.geckoview.GeckoSession
 
 /**
@@ -174,7 +177,7 @@ class BrowserState {
             return
         }
         // 异步检查
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             val exists = com.gua.browser.GuaApp.instance.bookmarkManager.exists(url)
             if (exists != isBookmarked) {
                 isBookmarked = exists

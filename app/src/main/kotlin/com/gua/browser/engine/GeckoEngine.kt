@@ -67,17 +67,6 @@ class GeckoEngine(
                     return GeckoResult.fromValue(if (allow) AllowOrDeny.ALLOW else AllowOrDeny.DENY)
                 } catch (_: Exception) { return null }
             }
-            override fun onExternalResponse(
-                session: GeckoSession,
-                response: GeckoSession.NavigationDelegate.ExternalResponse
-            ) {
-                super.onExternalResponse(session, response)
-                navigationListener?.onDownloadStart(
-                    response.uri,
-                    response.contentType ?: "",
-                    response.contentLength
-                )
-            }
         }
         geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, url: String) {
