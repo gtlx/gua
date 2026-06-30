@@ -32,3 +32,6 @@ local.properties
 .project
 .classpath
 .settings/
+
+# Pi agent（完全排除）
+.pi/
