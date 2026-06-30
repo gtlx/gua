@@ -5,6 +5,7 @@ import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -118,6 +119,24 @@ fun GuaBrowserTheme(
                 state.activeSearchEngineIndex, state.searchEngines.toList()
             )
         }.collect { stateSaver.save(state) }
+    }
+
+    // 返回键处理
+    BackHandler {
+        when {
+            state.showSettings -> state.showSettings = false
+            state.showScriptManager -> state.showScriptManager = false
+            state.showBookmarks -> state.showBookmarks = false
+            state.showHistory -> state.showHistory = false
+            state.showTabSwitcher -> state.showTabSwitcher = false
+            state.showQuickSettings -> state.showQuickSettings = false
+            state.isUrlFocused -> state.isUrlFocused = false
+            engineManager?.activeTab?.engine?.canGoBack() == true ->
+                engineManager?.activeTab?.engine?.goBack()
+            else -> {
+                // 退出应用
+            }
+        }
     }
 
     // 主题跟随夜间模式
@@ -279,6 +298,12 @@ fun GuaBrowserTheme(
                         state.showQuickSettings = false
                         state.showFindInPage = true
                     },
+                    onAddToHomeScreen = {
+                        state.showQuickSettings = false
+                        com.gua.browser.ui.ShortcutHelper.createShortcut(
+                            context, state.pageTitle.ifEmpty { "GuaBrowser" }, state.url.ifEmpty { "about:blank" }
+                        )
+                    },
                     onShare = {
                         state.showQuickSettings = false
                         val url = state.url
@@ -375,7 +400,6 @@ fun GuaBrowserTheme(
             if (state.showSettings) {
                 SettingsScreen(
                     state = state,
-                    downloader = app.runtimeDownloader,
                     onDismiss = { state.showSettings = false }
                 )
             }

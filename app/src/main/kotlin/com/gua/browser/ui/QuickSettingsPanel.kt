@@ -14,19 +14,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * 快速设置面板 — Via 风格
- *
- * 从底部滑出的功能快捷入口：
- *   夜间模式 | 广告过滤 | 桌面视图 | 脚本
- *   书签     | 历史    | 设置    | 查找
- */
+data class QuickItem(
+    val id: String,
+    val label: String,
+    val emoji: String
+)
+
+private val items = listOf(
+    QuickItem("night_mode", "夜间", "🌙"),
+    QuickItem("adblock", "广告", "🚫"),
+    QuickItem("desktop", "桌面", "🖥️"),
+    QuickItem("scripts", "脚本", "📜"),
+    QuickItem("bookmarks", "书签", "🔖"),
+    QuickItem("history", "历史", "📋"),
+    QuickItem("add_to_home", "桌面快捷", "🏠"),
+    QuickItem("share", "分享", "📤"),
+    QuickItem("find", "查找", "🔍"),
+    QuickItem("settings", "设置", "⚙️"),
+)
+
 @Composable
 fun QuickSettingsPanel(
     visible: Boolean,
@@ -41,6 +52,7 @@ fun QuickSettingsPanel(
     onHistory: () -> Unit,
     onFindInPage: () -> Unit,
     onShare: () -> Unit,
+    onAddToHomeScreen: () -> Unit,
     onSettings: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -64,119 +76,66 @@ fun QuickSettingsPanel(
                 shadowElevation = 8.dp,
                 color = MaterialTheme.colorScheme.surface
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    // 拖拽指示条
+                Column(modifier = Modifier.padding(16.dp)) {
                     Box(
                         modifier = Modifier
-                            .width(40.dp)
-                            .height(4.dp)
+                            .width(40.dp).height(4.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                             .align(Alignment.CenterHorizontally)
                     )
-
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "快捷工具",
-                        style = MaterialTheme.typography.titleMedium,
+                    Text("快捷工具", style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
+                        modifier = Modifier.padding(bottom = 12.dp))
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(4),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(quickSettingsItems) { item ->
-                            QuickSettingTile(
-                                item = item,
-                                isActive = when (item.id) {
-                                    "night_mode" -> isNightMode
-                                    "adblock" -> isAdblockEnabled
-                                    "desktop" -> isDesktopMode
-                                    else -> false
-                                },
-                                onClick = {
-                                    when (item.id) {
-                                        "night_mode" -> onNightModeChange(!isNightMode)
-                                        "adblock" -> onAdblockChange(!isAdblockEnabled)
-                                        "desktop" -> onDesktopModeChange(!isDesktopMode)
-                                        "scripts" -> onScriptManager()
-                                        "bookmarks" -> onBookmarks()
-                                        "history" -> onHistory()
-                                        "find" -> onFindInPage()
-                                        "share" -> onShare()
-                                        "settings" -> onSettings()
+                        items(items) { item ->
+                            val active = when (item.id) {
+                                "night_mode" -> isNightMode
+                                "adblock" -> isAdblockEnabled
+                                "desktop" -> isDesktopMode
+                                else -> false
+                            }
+                            val bg = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            val fg = if (active) MaterialTheme.colorScheme.primary
+                                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(bg)
+                                    .clickable {
+                                        when (item.id) {
+                                            "night_mode" -> onNightModeChange(!isNightMode)
+                                            "adblock" -> onAdblockChange(!isAdblockEnabled)
+                                            "desktop" -> onDesktopModeChange(!isDesktopMode)
+                                            "scripts" -> onScriptManager()
+                                            "bookmarks" -> onBookmarks()
+                                            "history" -> onHistory()
+                                            "add_to_home" -> onAddToHomeScreen()
+                                            "share" -> onShare()
+                                            "find" -> onFindInPage()
+                                            "settings" -> onSettings()
+                                        }
                                     }
-                                }
-                            )
+                                    .padding(12.dp)
+                            ) {
+                                Text(text = item.emoji, fontSize = 22.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(item.label, fontSize = 10.sp,
+                                    textAlign = TextAlign.Center, color = fg, maxLines = 1)
+                            }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-data class QuickSettingItem(
-    val id: String,
-    val label: String,
-    val icon: Int
-)
-
-private val quickSettingsItems = listOf(
-    QuickSettingItem("night_mode", "夜间", android.R.drawable.ic_menu_gallery),
-    QuickSettingItem("adblock", "广告", android.R.drawable.ic_menu_delete),
-    QuickSettingItem("desktop", "桌面", android.R.drawable.ic_menu_view),
-    QuickSettingItem("scripts", "脚本", android.R.drawable.ic_menu_edit),
-    QuickSettingItem("bookmarks", "书签", android.R.drawable.ic_menu_myplaces),
-    QuickSettingItem("history", "历史", android.R.drawable.ic_menu_recent_history),
-    QuickSettingItem("share", "分享", android.R.drawable.ic_menu_share),
-    QuickSettingItem("find", "查找", android.R.drawable.ic_menu_search),
-    QuickSettingItem("settings", "设置", android.R.drawable.ic_menu_manage),
-)
-
-@Composable
-fun QuickSettingTile(
-    item: QuickSettingItem,
-    isActive: Boolean,
-    onClick: () -> Unit
-) {
-    val bgColor = if (isActive)
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-    else
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-
-    val iconColor = if (isActive)
-        MaterialTheme.colorScheme.primary
-    else
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
-            .clickable(onClick = onClick)
-            .padding(12.dp)
-    ) {
-        Icon(
-            painter = painterResource(item.icon),
-            contentDescription = item.label,
-            tint = iconColor,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = item.label,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center,
-            color = iconColor,
-            maxLines = 1
-        )
     }
 }
