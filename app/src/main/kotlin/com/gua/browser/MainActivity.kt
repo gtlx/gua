@@ -21,6 +21,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -388,18 +391,14 @@ fun GuaBrowserTheme(
 
             // 安全锁图标
             val lockColor = if (isSecure) Color(0xFF0D904F) else Color(0xFF9E9E9E)
-            Box(
+            Icon(
+                imageVector = if (isSecure) Icons.Default.Lock else Icons.Default.LockOpen,
+                contentDescription = if (isSecure) "安全连接" else "不安全连接",
+                tint = lockColor,
                 modifier = Modifier
                     .size(16.dp)
                     .clickable { }
-                    .background(lockColor.copy(alpha = 0.2f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (isSecure) "🔒" else "🔓",
-                    fontSize = 10.sp
-                )
-            }
+            )
 
             Spacer(modifier = Modifier.width(4.dp))
 
