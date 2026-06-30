@@ -151,8 +151,10 @@ fun GuaBrowserTheme(
 
                                     // 创建初始标签
                                     val tab = mgr.createTab("about:start")
-                                    state.bindEngine(tab.engine)
-                                    state.updateTabList(mgr)
+                                    if (tab != null) {
+                                        state.bindEngine(tab.engine)
+                                        state.updateTabList(mgr)
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxSize()

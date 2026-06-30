@@ -45,28 +45,37 @@ class EngineManager(
     /**
      * 创建新标签
      */
-    fun createTab(url: String = "about:blank"): Tab {
-        val geckoView = GeckoView(container.context).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+    fun createTab(url: String = "about:blank"): Tab? {
+        if (!GeckoSetup.checkAvailability()) {
+            android.util.Log.w("EngineMgr", "GeckoView not available, download runtime first")
+            return null
+        }
+        try {
+            val geckoView = GeckoView(container.context).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+
+            val engine = GeckoEngine(geckoView, lifecycleOwner)
+            val tab = Tab(
+                engine = engine,
+                geckoView = geckoView
             )
+
+            tabs.add(tab)
+            switchToTab(tabs.size - 1)
+
+            if (url != "about:blank") {
+                engine.loadUrl(url)
+            }
+
+            return tab
+        } catch (e: Exception) {
+            android.util.Log.e("EngineMgr", "Failed to create tab", e)
+            return null
         }
-
-        val engine = GeckoEngine(geckoView, lifecycleOwner)
-        val tab = Tab(
-            engine = engine,
-            geckoView = geckoView
-        )
-
-        tabs.add(tab)
-        switchToTab(tabs.size - 1)
-
-        if (url != "about:blank") {
-            engine.loadUrl(url)
-        }
-
-        return tab
     }
 
     /**
