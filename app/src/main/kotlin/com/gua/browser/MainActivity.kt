@@ -383,7 +383,7 @@ class MainActivity : ComponentActivity() {
                 value = displayText,
                 onValueChange = onUrlChange,
                 modifier = Modifier.weight(1f),
-                placeholder = @Composable { Text("搜索或输入网址") },
+                placeholder = { Text("搜索或输入网址") },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium,
                 shape = RoundedCornerShape(20.dp),
