@@ -123,8 +123,8 @@ class ScriptManager(private val context: Context) {
     /**
      * 设置 WebExtension 控制器
      */
-    fun setExtensionController(controller: WebExtensionController?) {
-        injector.setExtensionController(controller)
+    fun setRuntime(runtime: GeckoRuntime?) {
+        if (runtime != null) injector.setRuntime(runtime)
     }
 
     // ===== 回调 =====

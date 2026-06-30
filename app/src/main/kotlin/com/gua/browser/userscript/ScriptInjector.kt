@@ -37,6 +37,8 @@ class ScriptInjector(private val context: Context) {
         this.runtime = runtime
     }
 
+    fun getRuntime(): GeckoRuntime? = runtime
+
     /**
      * 从 ScriptRepository 中安装或更新所有已启用的脚本
      */
@@ -57,14 +59,15 @@ class ScriptInjector(private val context: Context) {
 
         try {
             val extDir = createExtensionDir(script)
-            val extension = WebExtension(
-                extDir.toURI(),
-                WebExtension.Flags.ALLOW_CONTENT_MESSAGING
-            )
-
-            registeredExtensions[script.id] = extension
-
-            Log.d(TAG, "已安装用户脚本: ${script.name} v${script.version}")
+            val uri = extDir.toURI().toString()
+            runtime?.webExtensionController?.install(uri, WebExtension.Flags.ALLOW_CONTENT_MESSAGING)
+                ?.accept { ext ->
+                    registeredExtensions[script.id] = ext
+                    Log.d(TAG, "已安装: ${script.name} v${script.version}")
+                }
+                ?.exceptionally { e ->
+                    Log.e(TAG, "安装失败: ${script.name}", e)
+                }
         } catch (e: Exception) {
             Log.e(TAG, "安装脚本失败: ${script.name}", e)
         }
