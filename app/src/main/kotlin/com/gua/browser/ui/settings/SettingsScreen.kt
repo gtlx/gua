@@ -147,6 +147,78 @@ fun SettingsScreen(
                         )
                     }
 
+                    // ===== 工具栏 =====
+                    item {
+                        SectionHeader("工具栏")
+                    }
+
+                    item {
+                        // 工具栏位置
+                        SettingsCard(
+                            icon = android.R.drawable.ic_menu_compass,
+                            title = "工具栏位置",
+                            subtitle = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) "顶部" else "底部",
+                            onClick = {
+                                state.toolbarPosition = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP)
+                                    BrowserState.ToolbarPos.BOTTOM else BrowserState.ToolbarPos.TOP
+                            }
+                        )
+                    }
+
+                    item {
+                        SettingsSwitchCard(
+                            icon = android.R.drawable.ic_menu_view,
+                            title = "显示地址栏",
+                            checked = state.showUrlBar,
+                            onCheckedChange = { state.showUrlBar = it }
+                        )
+                    }
+
+                    item {
+                        SettingsSwitchCard(
+                            icon = android.R.drawable.ic_media_previous,
+                            title = "后退按钮",
+                            checked = state.showBackBtn,
+                            onCheckedChange = { state.showBackBtn = it }
+                        )
+                    }
+
+                    item {
+                        SettingsSwitchCard(
+                            icon = android.R.drawable.ic_media_next,
+                            title = "前进按钮",
+                            checked = state.showForwardBtn,
+                            onCheckedChange = { state.showForwardBtn = it }
+                        )
+                    }
+
+                    item {
+                        SettingsSwitchCard(
+                            icon = android.R.drawable.ic_menu_compass,
+                            title = "主页按钮",
+                            checked = state.showHomeBtn,
+                            onCheckedChange = { state.showHomeBtn = it }
+                        )
+                    }
+
+                    item {
+                        SettingsSwitchCard(
+                            icon = android.R.drawable.ic_menu_sort_by_size,
+                            title = "标签按钮",
+                            checked = state.showTabsBtn,
+                            onCheckedChange = { state.showTabsBtn = it }
+                        )
+                    }
+
+                    item {
+                        SettingsSwitchCard(
+                            icon = android.R.drawable.ic_menu_manage,
+                            title = "菜单按钮",
+                            checked = state.showMenuBtn,
+                            onCheckedChange = { state.showMenuBtn = it }
+                        )
+                    }
+
                     // ===== 运行时 =====
                     item {
                         SectionHeader("引擎")

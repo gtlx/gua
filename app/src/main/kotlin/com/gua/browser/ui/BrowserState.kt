@@ -47,7 +47,24 @@ class BrowserState {
     var tabs by mutableStateOf<List<EngineManager.Tab>>(emptyList())
     var activeTabIndex by mutableIntStateOf(0)
 
-    // ===== 设置 =====
+    // ===== 布局设置 =====
+    enum class ToolbarPos { TOP, BOTTOM }
+    var toolbarPosition by mutableStateOf(ToolbarPos.BOTTOM)
+    var showUrlBar by mutableStateOf(true)
+
+    // ===== 自定义颜色 =====
+    var toolbarColor by mutableStateOf(-1)  // -1 = 跟随主题
+    var urlBarColor by mutableStateOf(-1)
+    var bgColor by mutableStateOf(-1)
+
+    // ===== 工具栏按钮显示 =====
+    var showBackBtn by mutableStateOf(true)
+    var showForwardBtn by mutableStateOf(true)
+    var showHomeBtn by mutableStateOf(true)
+    var showTabsBtn by mutableStateOf(true)
+    var showMenuBtn by mutableStateOf(true)
+
+    // ===== 功能设置 =====
     var isNightMode by mutableStateOf(false)
     var isAdblockEnabled by mutableStateOf(true)
     var isDesktopMode by mutableStateOf(false)

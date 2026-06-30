@@ -128,13 +128,50 @@ fun GuaBrowserTheme(
             if (!state.showTabSwitcher && !state.showScriptManager) {
                 Column(modifier = Modifier.fillMaxSize()) {
 
-                    // 1. Web 内容
+                    // 工具栏位置：顶部
+                    if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) {
+                        if (state.showUrlBar) {
+                            UrlBar(
+                                urlText = state.url,
+                                isFocused = state.isUrlFocused,
+                                isSecure = state.isSecure,
+                                searchEngineLabel = state.searchEngineLabel,
+                                onUrlChange = { state.url = it },
+                                onFocusChange = { state.isUrlFocused = it },
+                                onSearchEngineSwitch = { state.switchSearchEngine() },
+                                onGo = { input ->
+                                    state.isUrlFocused = false
+                                    val tab = engineManager?.activeTab ?: return@UrlBar
+                                    tab.engine.loadUrl(normalizeUrl(input, state.activeSearchEngine))
+                                    state.url = input
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        BottomToolbar(
+                            canGoBack = state.canGoBack,
+                            canGoForward = state.canGoForward,
+                            tabCount = state.tabs.size,
+                            showBack = state.showBackBtn,
+                            showForward = state.showForwardBtn,
+                            showHome = state.showHomeBtn,
+                            showTabs = state.showTabsBtn,
+                            showMenu = state.showMenuBtn,
+                            onBack = { engineManager?.activeTab?.engine?.goBack() },
+                            onForward = { engineManager?.activeTab?.engine?.goForward() },
+                            onHome = { engineManager?.activeTab?.engine?.loadUrl("about:start") },
+                            onTabs = { state.showTabSwitcher = true },
+                            onQuickSettings = { state.showQuickSettings = !state.showQuickSettings },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Web 内容
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
                     ) {
-                        // GeckoView 容器
                         val lifecycleOwner = LocalLifecycleOwner.current
                         AndroidView(
                             factory = { ctx ->
@@ -143,13 +180,8 @@ fun GuaBrowserTheme(
                                         ViewGroup.LayoutParams.MATCH_PARENT,
                                         ViewGroup.LayoutParams.MATCH_PARENT
                                     )
-                                    val mgr = EngineManager(
-                                        container = this,
-                                        lifecycleOwner = lifecycleOwner
-                                    )
+                                    val mgr = EngineManager(this, lifecycleOwner)
                                     engineManager = mgr
-
-                                    // 创建初始标签
                                     val tab = mgr.createTab("about:start")
                                     if (tab != null) {
                                         state.bindEngine(tab.engine)
@@ -160,70 +192,67 @@ fun GuaBrowserTheme(
                             modifier = Modifier.fillMaxSize()
                         )
 
-                        // 加载进度条
                         androidx.compose.animation.AnimatedVisibility(
                             visible = state.progress in 1..99,
-                            enter = fadeIn(),
-                            exit = fadeOut()
+                            enter = fadeIn(), exit = fadeOut()
                         ) {
                             LinearProgressIndicator(
                                 progress = { state.progress / 100f },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color.Transparent),
+                                modifier = Modifier.fillMaxWidth().background(Color.Transparent),
                                 color = MaterialTheme.colorScheme.primary,
                                 trackColor = Color.Transparent,
                             )
                         }
 
-                        // 页面标题
                         if (!state.isUrlFocused && state.pageTitle.isNotEmpty() && state.progress >= 100) {
                             Text(
                                 text = state.pageTitle,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.align(Alignment.TopCenter)
                                     .padding(top = 6.dp, start = 48.dp, end = 48.dp)
                             )
                         }
                     }
 
-                    // 2. 地址栏
-                    UrlBar(
-                        urlText = state.url,
-                        isFocused = state.isUrlFocused,
-                        isSecure = state.isSecure,
-                        searchEngineLabel = state.searchEngineLabel,
-                        onUrlChange = { state.url = it },
-                        onFocusChange = { state.isUrlFocused = it },
-                        onSearchEngineSwitch = { state.switchSearchEngine() },
-                        onGo = { input ->
-                            state.isUrlFocused = false
-                            val tab = engineManager?.activeTab ?: return@UrlBar
-                            val url = normalizeUrl(input, state.activeSearchEngine)
-                            tab.engine.loadUrl(url)
-                            state.url = url
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // 3. 底部工具栏
-                    BottomToolbar(
-                        canGoBack = state.canGoBack,
-                        canGoForward = state.canGoForward,
-                        tabCount = state.tabs.size,
-                        onBack = { engineManager?.activeTab?.engine?.goBack() },
-                        onForward = { engineManager?.activeTab?.engine?.goForward() },
-                        onHome = {
-                            engineManager?.activeTab?.engine?.loadUrl("about:start")
-                        },
-                        onTabs = { state.showTabSwitcher = true },
-                        onQuickSettings = { state.showQuickSettings = !state.showQuickSettings },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // 工具栏位置：底部
+                    if (state.toolbarPosition == BrowserState.ToolbarPos.BOTTOM) {
+                        if (state.showUrlBar) {
+                            UrlBar(
+                                urlText = state.url,
+                                isFocused = state.isUrlFocused,
+                                isSecure = state.isSecure,
+                                searchEngineLabel = state.searchEngineLabel,
+                                onUrlChange = { state.url = it },
+                                onFocusChange = { state.isUrlFocused = it },
+                                onSearchEngineSwitch = { state.switchSearchEngine() },
+                                onGo = { input ->
+                                    state.isUrlFocused = false
+                                    val tab = engineManager?.activeTab ?: return@UrlBar
+                                    tab.engine.loadUrl(normalizeUrl(input, state.activeSearchEngine))
+                                    state.url = input
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        BottomToolbar(
+                            canGoBack = state.canGoBack,
+                            canGoForward = state.canGoForward,
+                            tabCount = state.tabs.size,
+                            showBack = state.showBackBtn,
+                            showForward = state.showForwardBtn,
+                            showHome = state.showHomeBtn,
+                            showTabs = state.showTabsBtn,
+                            showMenu = state.showMenuBtn,
+                            onBack = { engineManager?.activeTab?.engine?.goBack() },
+                            onForward = { engineManager?.activeTab?.engine?.goForward() },
+                            onHome = { engineManager?.activeTab?.engine?.loadUrl("about:start") },
+                            onTabs = { state.showTabSwitcher = true },
+                            onQuickSettings = { state.showQuickSettings = !state.showQuickSettings },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
                 // 快速设置浮层
@@ -440,6 +469,11 @@ fun GuaBrowserTheme(
     canGoBack: Boolean,
     canGoForward: Boolean,
     tabCount: Int,
+    showBack: Boolean = true,
+    showForward: Boolean = true,
+    showHome: Boolean = true,
+    showTabs: Boolean = true,
+    showMenu: Boolean = true,
     onBack: () -> Unit,
     onForward: () -> Unit,
     onHome: () -> Unit,
@@ -460,33 +494,43 @@ fun GuaBrowserTheme(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ToolbarBtn(
-                icon = android.R.drawable.ic_media_previous,
-                label = "后退",
-                enabled = canGoBack,
-                onClick = onBack
-            )
-            ToolbarBtn(
-                icon = android.R.drawable.ic_media_next,
-                label = "前进",
-                enabled = canGoForward,
-                onClick = onForward
-            )
-            ToolbarBtn(
-                icon = android.R.drawable.ic_menu_compass,
-                label = "主页",
-                onClick = onHome
-            )
-            ToolbarBtn(
-                icon = android.R.drawable.ic_menu_sort_by_size,
-                label = "$tabCount",
-                onClick = onTabs
-            )
-            ToolbarBtn(
-                icon = android.R.drawable.ic_menu_manage,
-                label = "工具",
-                onClick = onQuickSettings
-            )
+            if (showBack) {
+                ToolbarBtn(
+                    icon = android.R.drawable.ic_media_previous,
+                    label = "后退",
+                    enabled = canGoBack,
+                    onClick = onBack
+                )
+            }
+            if (showForward) {
+                ToolbarBtn(
+                    icon = android.R.drawable.ic_media_next,
+                    label = "前进",
+                    enabled = canGoForward,
+                    onClick = onForward
+                )
+            }
+            if (showHome) {
+                ToolbarBtn(
+                    icon = android.R.drawable.ic_menu_compass,
+                    label = "主页",
+                    onClick = onHome
+                )
+            }
+            if (showTabs) {
+                ToolbarBtn(
+                    icon = android.R.drawable.ic_menu_sort_by_size,
+                    label = "$tabCount",
+                    onClick = onTabs
+                )
+            }
+            if (showMenu) {
+                ToolbarBtn(
+                    icon = android.R.drawable.ic_menu_manage,
+                    label = "工具",
+                    onClick = onQuickSettings
+                )
+            }
         }
     }
 }
