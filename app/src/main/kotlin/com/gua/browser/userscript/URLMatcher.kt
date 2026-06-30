@@ -47,7 +47,9 @@ object URLMatcher {
 
         // 如果模式不包含协议，自动补 *
         val p = if (!pattern.contains("://") && !pattern.startsWith("/")) {
-            ("*://*" + "/*").replace("*", "__WILD__") + pattern
+            // 避免在源码中出现 /* 序列（KAPT stubs 生成器会误解析）
+            val allPath = "/" + '*'
+            ("*://*" + allPath).replace("*", "__WILD__") + pattern
         } else pattern
 
         var i = 0
