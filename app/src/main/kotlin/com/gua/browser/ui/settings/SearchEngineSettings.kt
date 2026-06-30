@@ -200,7 +200,7 @@ fun SearchEngineSettings(
                                         modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
-                                            painter = painterResource(android.R.drawable.ic_menu_download),
+                                            painter = painterResource(android.R.drawable.ic_menu_upload),
                                             contentDescription = "下移",
                                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                             modifier = Modifier.size(18.dp)

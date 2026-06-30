@@ -122,7 +122,7 @@ fun QuickSettingsPanel(
     }
 }
 
-private data class QuickSettingItem(
+data class QuickSettingItem(
     val id: String,
     val label: String,
     val icon: Int

@@ -6,7 +6,7 @@ import com.gua.browser.core.network.HttpClient
 import com.gua.browser.userscript.gmapi.GMApiBridge
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.StateFlow
-import org.mozilla.geckoview.WebExtensionController
+import org.mozilla.geckoview.GeckoRuntime
 
 /**
  * 用户脚本管理器

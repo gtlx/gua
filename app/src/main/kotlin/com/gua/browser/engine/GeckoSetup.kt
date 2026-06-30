@@ -42,7 +42,7 @@ object GeckoSetup {
                     .build()
             )
             // 自动播放策略
-            .autoplayDefault(GeckoRuntimeSettings.AutoplayDefault.BLOCKED)
+            .autoplayDefault(false)
             // 远程调试（调试用）
             .remoteDebuggingEnabled(true)
             .build()
