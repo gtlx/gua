@@ -405,7 +405,7 @@ class MainActivity : ComponentActivity() {
                     imeAction = ImeAction.Go
                 ),
                 keyboardActions = KeyboardActions(onGo = { onGo(urlText) }),
-                onFocusChange = { focused -> onFocusChange(focused) }
+                onFocusChange = { focused: Boolean -> onFocusChange(focused) }
             )
 
             Spacer(modifier = Modifier.width(4.dp))
@@ -425,7 +425,6 @@ class MainActivity : ComponentActivity() {
 /**
  * Via 风格底部工具栏
  */
-@Composable
 @Composable fun BottomToolbar(
     canGoBack: Boolean,
     canGoForward: Boolean,
@@ -481,7 +480,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
 @Composable fun ToolbarBtn(
     icon: Int,
     label: String,

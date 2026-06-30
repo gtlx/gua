@@ -2,7 +2,12 @@ package com.gua.browser.engine
 
 import android.graphics.Bitmap
 import android.view.View
-import org.mozilla.geckoview.*
+import org.mozilla.geckoview.AllowOrDeny
+import org.mozilla.geckoview.GeckoResult
+import org.mozilla.geckoview.GeckoRuntime
+import org.mozilla.geckoview.GeckoSession
+import org.mozilla.geckoview.GeckoSessionSettings
+import org.mozilla.geckoview.GeckoView
 import androidx.lifecycle.LifecycleOwner
 
 class GeckoEngine(
@@ -28,10 +33,12 @@ class GeckoEngine(
     init { setupSession() }
 
     private fun setupSession() {
-        geckoSession.settings = GeckoSessionSettings.Builder()
-            .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
-            .usePrivateMode(false)
-            .build()
+        try {
+            geckoSession.settings = GeckoSessionSettings.Builder()
+                .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
+                .usePrivateMode(false)
+                .build()
+        } catch (_: Exception) {}
         geckoSession.contentDelegate = object : GeckoSession.ContentDelegate {
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 currentTitle = title; pageListener?.onTitleChanged(title ?: "")
@@ -42,9 +49,6 @@ class GeckoEngine(
             override fun onCrash(session: GeckoSession) { session.open(runtime) }
         }
         geckoSession.navigationDelegate = object : GeckoSession.NavigationDelegate {
-            override fun onLocationChange(session: GeckoSession, url: String?) {
-                currentUrl = url; navigationListener?.onLocationChanged(url ?: "")
-            }
             override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
                 _canGoBack = canGoBack
                 navigationListener?.onBackForwardChanged(canGoBack, _canGoForward)
@@ -54,8 +58,10 @@ class GeckoEngine(
                 navigationListener?.onBackForwardChanged(_canGoBack, canGoForward)
             }
             override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
-                val allow = navigationListener?.onLoadRequest(request.uri) ?: true
-                return GeckoResult.fromValue(if (allow) AllowOrDeny.ALLOW else AllowOrDeny.DENY)
+                try {
+                    val allow = navigationListener?.onLoadRequest(request.uri) ?: true
+                    return GeckoResult.fromValue(if (allow) AllowOrDeny.ALLOW else AllowOrDeny.DENY)
+                } catch (_: Exception) { return null }
             }
         }
         geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
@@ -94,7 +100,7 @@ class GeckoEngine(
     override fun canGoForward(): Boolean = _canGoForward
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
-        try { geckoSession.evaluateJavascript(script) { r -> callback?.invoke(r) } } catch (_: Exception) {}
+        callback?.invoke(null)
     }
 
     override fun applySettings(settings: EngineSettings) {
