@@ -13,8 +13,13 @@ import org.mozilla.geckoview.GeckoRuntime
  *
  * 统一管理脚本的安装、卸载、注入、更新。
  * 串联 ScriptParser → ScriptRepository → ScriptInjector 整个流程。
+ *
+ * @param scope 外部传入的协程作用域，跟随 Application 生命周期
  */
-class ScriptManager(private val context: Context) {
+class ScriptManager(
+    private val context: Context,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+) {
 
     companion object {
         private const val TAG = "ScriptManager"
@@ -31,10 +36,8 @@ class ScriptManager(private val context: Context) {
      * 初始化：设置 API 回调
      */
     fun init() {
-        // 设置 GM_openInTab 回调
         apiBridge.setOpenInTabCallback { url ->
             Log.d(TAG, "GM_openInTab: $url")
-            // 通过 EventBus 或回调通知 UI 层新建标签页
             onOpenInTab?.invoke(url)
         }
 
@@ -62,9 +65,10 @@ class ScriptManager(private val context: Context) {
 
     /**
      * 从 GreasyFork 等 URL 安装脚本
+     * 使用外部 scope 避免协程泄漏
      */
     fun installFromUrl(url: String, onComplete: (UserScript?) -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             try {
                 val response = HttpClient.execute(HttpClient.Request(url = url))
                 if (response.statusCode == 200) {

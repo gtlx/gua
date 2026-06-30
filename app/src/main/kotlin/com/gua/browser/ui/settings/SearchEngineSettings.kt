@@ -7,13 +7,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -186,7 +189,7 @@ fun SearchEngineSettings(
                                         modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
-                                            painter = painterResource(android.R.drawable.ic_menu_upload),
+                                            Icons.Default.ArrowUpward,
                                             contentDescription = "上移",
                                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                             modifier = Modifier.size(18.dp)
@@ -200,7 +203,7 @@ fun SearchEngineSettings(
                                         modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
-                                            painter = painterResource(android.R.drawable.ic_menu_upload),
+                                            Icons.Default.ArrowDownward,
                                             contentDescription = "下移",
                                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                             modifier = Modifier.size(18.dp)
@@ -214,7 +217,7 @@ fun SearchEngineSettings(
                                         modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
-                                            painter = painterResource(android.R.drawable.ic_menu_close_clear_cancel),
+                                            Icons.Default.Close,
                                             contentDescription = "删除",
                                             tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
                                             modifier = Modifier.size(18.dp)

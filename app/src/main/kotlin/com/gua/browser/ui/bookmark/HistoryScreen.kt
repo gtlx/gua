@@ -12,7 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,7 +119,7 @@ fun HistoryScreen(
                         shape = RoundedCornerShape(12.dp),
                         leadingIcon = {
                             Icon(
-                                painter = painterResource(android.R.drawable.ic_menu_search),
+                                Icons.Default.Search,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -281,7 +283,7 @@ fun HistoryCard(
                 modifier = Modifier.size(28.dp)
             ) {
                 Icon(
-                    painter = painterResource(android.R.drawable.ic_menu_close_clear_cancel),
+                    Icons.Default.Close,
                     contentDescription = "删除",
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                     modifier = Modifier.size(16.dp)

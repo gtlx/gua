@@ -1,6 +1,7 @@
 package com.gua.browser.engine
 
 import android.graphics.Bitmap
+import android.util.Log
 import android.view.View
 import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
@@ -10,12 +11,17 @@ import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.GeckoView
 import androidx.lifecycle.LifecycleOwner
 
+/**
+ * GeckoView 引擎封装
+ *
+ * 负责 GeckoSession 的生命周期管理和事件转发。
+ */
 class GeckoEngine(
     private val geckoView: GeckoView,
     lifecycleOwner: LifecycleOwner
 ) : IEngineView {
 
-    private val sessionSettings = GeckoSessionSettings.Builder()
+    private var sessionSettings = GeckoSessionSettings.Builder()
         .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
         .usePrivateMode(false)
         .build()
@@ -61,6 +67,17 @@ class GeckoEngine(
                     return GeckoResult.fromValue(if (allow) AllowOrDeny.ALLOW else AllowOrDeny.DENY)
                 } catch (_: Exception) { return null }
             }
+            override fun onExternalResponse(
+                session: GeckoSession,
+                response: GeckoSession.NavigationDelegate.ExternalResponse
+            ) {
+                super.onExternalResponse(session, response)
+                navigationListener?.onDownloadStart(
+                    response.uri,
+                    response.contentType ?: "",
+                    response.contentLength
+                )
+            }
         }
         geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, url: String) {
@@ -79,6 +96,7 @@ class GeckoEngine(
         }
         geckoSession.permissionDelegate = object : GeckoSession.PermissionDelegate {
             override fun onContentPermissionRequest(session: GeckoSession, perm: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
+                // 默认允许，后续可加入 per-site 配置
                 return GeckoResult.fromValue(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW)
             }
         }
@@ -101,17 +119,40 @@ class GeckoEngine(
         callback?.invoke(null)
     }
 
+    /**
+     * 应用引擎设置
+     *
+     * 通过重新创建 GeckoSession 来应用设置，
+     * 避免使用反射修改私有字段。
+     */
     override fun applySettings(settings: EngineSettings) {
-        val sb = GeckoSessionSettings.Builder()
-        sb.userAgentMode(if (settings.desktopMode)
-            GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
-        else GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
-        sb.usePrivateMode(false)
-        try {
-            val f = GeckoSession::class.java.getDeclaredField("mSettings")
-            f.isAccessible = true
-            f.set(geckoSession, sb.build())
-        } catch (_: Exception) {}
+        val builder = GeckoSessionSettings.Builder()
+        builder.userAgentMode(
+            if (settings.desktopMode)
+                GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
+            else
+                GeckoSessionSettings.USER_AGENT_MODE_MOBILE
+        )
+        builder.usePrivateMode(false)
+        sessionSettings = builder.build()
+
+        // 重建会话以应用新设置
+        val oldSession = geckoSession
+        val newSession = GeckoSession(sessionSettings)
+        copyDelegates(oldSession, newSession)
+        geckoView.setSession(newSession)
+        newSession.open(runtime)
+        oldSession.close()
+    }
+
+    /**
+     * 将旧 session 的代理复制到新 session
+     */
+    private fun copyDelegates(old: GeckoSession, new: GeckoSession) {
+        new.contentDelegate = old.contentDelegate
+        new.navigationDelegate = old.navigationDelegate
+        new.progressDelegate = old.progressDelegate
+        new.permissionDelegate = old.permissionDelegate
     }
 
     override fun captureBitmap(callback: (Bitmap?) -> Unit) { callback(null) }
@@ -119,6 +160,7 @@ class GeckoEngine(
     override fun onPause() {}
     override fun onDestroy() { geckoSession.close() }
 
+    // ===== 监听器接口 =====
     interface NavigationListener {
         fun onLocationChanged(url: String) {}
         fun onBackForwardChanged(canGoBack: Boolean, canGoForward: Boolean) {}

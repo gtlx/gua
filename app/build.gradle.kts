@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    kotlin("kapt")
 }
 
 android {
@@ -73,6 +72,7 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.runtime)
     implementation(libs.compose.navigation)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.activity.compose)
 
     // Lifecycle
@@ -87,8 +87,5 @@ dependencies {
     implementation(libs.geckoview)
 
     // Storage
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    kapt(libs.room.compiler)
     implementation(libs.datastore.preferences)
 }

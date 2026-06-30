@@ -1,22 +1,28 @@
 package com.gua.browser.ui
 
 import android.content.Context
-import androidx.compose.runtime.snapshotFlow
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
 private val Context.stateStore by preferencesDataStore(name = "browser_state")
 
-class BrowserStateSaver(private val context: Context) {
-
-    private val scope = CoroutineScope(Dispatchers.IO)
+/**
+ * 浏览器状态持久化
+ *
+ * 使用防抖（debounce）机制避免每次微小变化都写磁盘。
+ * 由外部传入 CoroutineScope 统一管理生命周期。
+ */
+class BrowserStateSaver(
+    private val context: Context,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+) {
 
     companion object {
         val KEY_NIGHT_MODE = intPreferencesKey("night_mode")
@@ -32,6 +38,8 @@ class BrowserStateSaver(private val context: Context) {
         val KEY_SHOW_TABS = intPreferencesKey("show_tabs")
         val KEY_SHOW_MENU = intPreferencesKey("show_menu")
     }
+
+    private var saveJob: Job? = null
 
     suspend fun load(state: BrowserState) {
         val prefs = context.stateStore.data.first()
@@ -67,8 +75,13 @@ class BrowserStateSaver(private val context: Context) {
         state.activeSearchEngineIndex = prefs[KEY_ACTIVE_SEARCH] ?: 0
     }
 
+    /**
+     * 防抖保存: 300ms 内的连续调用只会触发一次写盘
+     */
     fun save(state: BrowserState) {
-        scope.launch {
+        saveJob?.cancel()
+        saveJob = scope.launch {
+            kotlinx.coroutines.delay(300) // debounce
             context.stateStore.edit { prefs ->
                 prefs[KEY_NIGHT_MODE] = if (state.isNightMode) 1 else 0
                 prefs[KEY_ADBLOCK] = if (state.isAdblockEnabled) 1 else 0

@@ -5,7 +5,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gua.browser.engine.EngineManager
+import com.gua.browser.engine.EngineSettings
 import com.gua.browser.engine.GeckoEngine
+import org.mozilla.geckoview.GeckoSession
 
 /**
  * 浏览器全局状态
@@ -53,7 +55,7 @@ class BrowserState {
     var showUrlBar by mutableStateOf(true)
 
     // ===== 自定义颜色 =====
-    var toolbarColor by mutableStateOf(-1)  // -1 = 跟随主题
+    var toolbarColor by mutableStateOf(-1)
     var urlBarColor by mutableStateOf(-1)
     var bgColor by mutableStateOf(-1)
 
@@ -68,6 +70,15 @@ class BrowserState {
     var isNightMode by mutableStateOf(false)
     var isAdblockEnabled by mutableStateOf(true)
     var isDesktopMode by mutableStateOf(false)
+
+    // ===== 书签状态 =====
+    var isBookmarked by mutableStateOf(false)
+
+    // ===== 引擎引用（查找功能需要） =====
+    var geckoSession: GeckoSession? by mutableStateOf(null)
+
+    /** 当前引用的引擎（用于应用设置） */
+    private var currentEngine: GeckoEngine? = null
 
     // ===== 搜索 =====
     var searchEngines by mutableStateOf(
@@ -89,13 +100,21 @@ class BrowserState {
     val searchEngineLabel: String
         get() = activeSearchEngine.shortName
 
+    /** 是否在主页 */
+    val isHomePage: Boolean
+        get() = url == "about:start" || url == "about:blank" || url.isEmpty()
+
     // ===== 引擎回调绑定 =====
     fun bindEngine(engine: GeckoEngine?) {
         engine ?: return
+        currentEngine = engine
+        geckoSession = engine.session
 
         engine.setNavigationListener(object : GeckoEngine.NavigationListener {
             override fun onLocationChanged(url: String) {
                 this@BrowserState.url = url
+                // 每次 URL 变化时检查书签状态
+                checkBookmarkStatus(url)
             }
 
             override fun onBackForwardChanged(canGoBack: Boolean, canGoForward: Boolean) {
@@ -136,6 +155,31 @@ class BrowserState {
                 pageTitle = title
             }
         })
+
+        // 应用当前桌面模式设置
+        applyDesktopMode()
+    }
+
+    /** 应用桌面模式设置到当前引擎 */
+    fun applyDesktopMode() {
+        currentEngine?.applySettings(
+            EngineSettings(desktopMode = isDesktopMode)
+        )
+    }
+
+    /** 检查当前 URL 是否已收藏 */
+    private fun checkBookmarkStatus(url: String) {
+        if (url.isBlank() || url.startsWith("about:")) {
+            isBookmarked = false
+            return
+        }
+        // 异步检查
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val exists = com.gua.browser.GuaApp.instance.bookmarkManager.exists(url)
+            if (exists != isBookmarked) {
+                isBookmarked = exists
+            }
+        }
     }
 
     fun updateTabList(manager: EngineManager) {
@@ -147,12 +191,11 @@ class BrowserState {
         activeSearchEngineIndex = (activeSearchEngineIndex + 1) % searchEngines.size
     }
 
-    /** 添加搜索引擎 */
+    // ===== 搜索引擎管理 =====
     fun addSearchEngine(name: String, url: String, shortName: String = name.take(2)) {
         searchEngines = (searchEngines + SearchEngine(name, url, shortName)).toMutableList()
     }
 
-    /** 删除搜索引擎 */
     fun removeSearchEngine(index: Int) {
         if (searchEngines.size <= 1) return
         val newList = searchEngines.toMutableList()
@@ -163,14 +206,12 @@ class BrowserState {
         }
     }
 
-    /** 切换搜索引擎 */
     fun setActiveSearchEngine(index: Int) {
         if (index in searchEngines.indices) {
             activeSearchEngineIndex = index
         }
     }
 
-    /** 上移搜索引擎 */
     fun moveSearchEngineUp(index: Int) {
         if (index <= 0) return
         val list = searchEngines.toMutableList()
@@ -184,7 +225,6 @@ class BrowserState {
         }
     }
 
-    /** 下移搜索引擎 */
     fun moveSearchEngineDown(index: Int) {
         if (index >= searchEngines.size - 1) return
         val list = searchEngines.toMutableList()

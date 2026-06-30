@@ -1,28 +1,30 @@
 package com.gua.browser.ui
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.mozilla.geckoview.GeckoSession
 
 /**
  * 页面查找面板 — Via 风格
  *
- * 从底部或顶部滑出的查找栏：
- * 输入关键词 → 高亮匹配 → 跳转上下个
+ * 通过 GeckoSession.findInPage() 实现查找功能。
  */
 @Composable
 fun FindInPagePanel(
@@ -34,8 +36,18 @@ fun FindInPagePanel(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onClose: () -> Unit,
+    geckoSession: GeckoSession? = null,
     modifier: Modifier = Modifier
 ) {
+    // 自动将查询文本同步到 GeckoView 查找
+    LaunchedEffect(query) {
+        if (query.isNotEmpty()) {
+            geckoSession?.findInPage(query, GeckoSession.FIND_FLAG_CASE_SENSITIVITY or GeckoSession.FIND_FLAG_LINKS_ONLY)
+        } else {
+            geckoSession?.clearMatches()
+        }
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
@@ -56,7 +68,7 @@ fun FindInPagePanel(
                 // 关闭按钮
                 IconButton(onClick = onClose) {
                     Icon(
-                        painter = painterResource(android.R.drawable.ic_menu_close_clear_cancel),
+                        Icons.Default.Close,
                         contentDescription = "关闭查找",
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -95,20 +107,20 @@ fun FindInPagePanel(
                 // 上一个
                 IconButton(onClick = onPrevious) {
                     Icon(
-                        painter = painterResource(android.R.drawable.ic_media_previous),
+                        Icons.Default.KeyboardArrowUp,
                         contentDescription = "上一个",
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
                 // 下一个
                 IconButton(onClick = onNext) {
                     Icon(
-                        painter = painterResource(android.R.drawable.ic_media_next),
+                        Icons.Default.KeyboardArrowDown,
                         contentDescription = "下一个",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

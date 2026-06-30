@@ -5,16 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Intent
@@ -22,18 +22,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.gua.browser.settings.DataManager
 import com.gua.browser.ui.BrowserState
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 /**
- * 设置主界面
+ * 设置主界面 — Via 风格
  *
- * 集成各类设置项：
- * - 搜索引擎管理
- * - 外观（夜间模式）
- * - 隐私（广告过滤）
- * - 浏览（桌面模式、JavaScript）
- * - 关于
+ * 所有图标已统一为 Material Icons。
  */
 @Composable
 fun SettingsScreen(
@@ -88,20 +82,16 @@ fun SettingsScreen(
                     }
                 }
 
-                // 设置项列表
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     // ===== 搜索 =====
-                    item {
-                        SectionHeader("搜索")
-                    }
-
+                    item { SectionHeader("搜索") }
                     item {
                         SettingsCard(
-                            icon = android.R.drawable.ic_menu_search,
+                            icon = Icons.Default.Search,
                             title = "搜索引擎",
                             subtitle = state.activeSearchEngine.name,
                             onClick = { showSearchEngines.value = true }
@@ -109,13 +99,10 @@ fun SettingsScreen(
                     }
 
                     // ===== 外观 =====
-                    item {
-                        SectionHeader("外观")
-                    }
-
+                    item { SectionHeader("外观") }
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_menu_gallery,
+                            icon = Icons.Default.DarkMode,
                             title = "夜间模式",
                             checked = state.isNightMode,
                             onCheckedChange = { state.isNightMode = it }
@@ -123,13 +110,10 @@ fun SettingsScreen(
                     }
 
                     // ===== 隐私 =====
-                    item {
-                        SectionHeader("隐私与安全")
-                    }
-
+                    item { SectionHeader("隐私与安全") }
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_menu_delete,
+                            icon = Icons.Default.Shield,
                             title = "广告过滤",
                             subtitle = "拦截广告和跟踪器",
                             checked = state.isAdblockEnabled,
@@ -138,13 +122,10 @@ fun SettingsScreen(
                     }
 
                     // ===== 浏览 =====
-                    item {
-                        SectionHeader("浏览")
-                    }
-
+                    item { SectionHeader("浏览") }
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_menu_view,
+                            icon = Icons.Default.DesktopWindows,
                             title = "桌面版网站",
                             subtitle = "默认以桌面模式加载页面",
                             checked = state.isDesktopMode,
@@ -153,14 +134,10 @@ fun SettingsScreen(
                     }
 
                     // ===== 工具栏 =====
+                    item { SectionHeader("工具栏") }
                     item {
-                        SectionHeader("工具栏")
-                    }
-
-                    item {
-                        // 工具栏位置
                         SettingsCard(
-                            icon = android.R.drawable.ic_menu_compass,
+                            icon = Icons.Default.SwapVert,
                             title = "工具栏位置",
                             subtitle = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) "顶部" else "底部",
                             onClick = {
@@ -169,98 +146,90 @@ fun SettingsScreen(
                             }
                         )
                     }
-
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_menu_view,
+                            icon = Icons.Default.Edit,
                             title = "显示地址栏",
                             checked = state.showUrlBar,
                             onCheckedChange = { state.showUrlBar = it }
                         )
                     }
-
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_media_previous,
+                            icon = Icons.Default.ArrowBack,
                             title = "后退按钮",
                             checked = state.showBackBtn,
                             onCheckedChange = { state.showBackBtn = it }
                         )
                     }
-
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_media_next,
+                            icon = Icons.Default.ArrowForward,
                             title = "前进按钮",
                             checked = state.showForwardBtn,
                             onCheckedChange = { state.showForwardBtn = it }
                         )
                     }
-
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_menu_compass,
+                            icon = Icons.Default.Home,
                             title = "主页按钮",
                             checked = state.showHomeBtn,
                             onCheckedChange = { state.showHomeBtn = it }
                         )
                     }
-
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_menu_sort_by_size,
+                            icon = Icons.Default.Layers,
                             title = "标签按钮",
                             checked = state.showTabsBtn,
                             onCheckedChange = { state.showTabsBtn = it }
                         )
                     }
-
                     item {
                         SettingsSwitchCard(
-                            icon = android.R.drawable.ic_menu_manage,
+                            icon = Icons.Default.MoreHoriz,
                             title = "菜单按钮",
                             checked = state.showMenuBtn,
                             onCheckedChange = { state.showMenuBtn = it }
                         )
                     }
 
-                    // ===== 运行时 =====
+                    // ===== 数据 =====
+                    item { SectionHeader("数据") }
                     item {
-                        SectionHeader("数据")
-                    }
-
-                    item {
+                        val exportScope = rememberCoroutineScope()
                         val exportLauncher = rememberLauncherForActivityResult(
                             ActivityResultContracts.CreateDocument("application/json")
                         ) { uri ->
                             if (uri != null) {
-                                GlobalScope.launch {
+                                exportScope.launch {
                                     val json = DataManager.exportToJson(state)
                                     DataManager.writeUriContent(context, uri, json)
                                 }
                             }
                         }
                         SettingsCard(
-                            icon = android.R.drawable.ic_menu_share,
+                            icon = Icons.Default.Upload,
                             title = "导出数据",
                             subtitle = "书签、设置、搜索引擎",
                             onClick = { exportLauncher.launch("gua_backup.json") }
                         )
                     }
-
                     item {
+                        val importScope = rememberCoroutineScope()
                         val importLauncher = rememberLauncherForActivityResult(
                             ActivityResultContracts.OpenDocument()
                         ) { uri ->
                             if (uri != null) {
-                                GlobalScope.launch {
+                                importScope.launch {
                                     val content = DataManager.readUriContent(context, uri)
                                     if (content != null) DataManager.importFromJson(content, state)
                                 }
                             }
                         }
                         SettingsCard(
-                            icon = android.R.drawable.ic_menu_upload,
+                            icon = Icons.Default.Download,
                             title = "导入数据",
                             subtitle = "恢复书签和设置",
                             onClick = { importLauncher.launch(arrayOf("application/json")) }
@@ -268,20 +237,16 @@ fun SettingsScreen(
                     }
 
                     // ===== 关于 =====
-                    item {
-                        SectionHeader("关于")
-                    }
-
+                    item { SectionHeader("关于") }
                     item {
                         SettingsCard(
-                            icon = android.R.drawable.ic_menu_info_details,
+                            icon = Icons.Default.Info,
                             title = "关于 GuaBrowser",
                             subtitle = "v0.1.0 · 基于 GeckoView",
                             onClick = { }
                         )
                     }
 
-                    // 底部留白
                     item { Spacer(modifier = Modifier.height(32.dp)) }
                 }
             }
@@ -289,9 +254,6 @@ fun SettingsScreen(
     }
 }
 
-/**
- * 运行时下载卡片
- */
 @Composable
 fun SectionHeader(title: String) {
     Text(
@@ -308,7 +270,7 @@ fun SectionHeader(title: String) {
  */
 @Composable
 fun SettingsCard(
-    icon: Int,
+    icon: ImageVector,
     title: String,
     subtitle: String = "",
     onClick: () -> Unit
@@ -329,7 +291,7 @@ fun SettingsCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                painter = painterResource(icon),
+                icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 modifier = Modifier.size(22.dp)
@@ -350,7 +312,7 @@ fun SettingsCard(
                 }
             }
             Icon(
-                painter = painterResource(android.R.drawable.ic_menu_more),
+                Icons.Default.ChevronRight,
                 contentDescription = "进入",
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                 modifier = Modifier.size(18.dp)
@@ -364,7 +326,7 @@ fun SettingsCard(
  */
 @Composable
 fun SettingsSwitchCard(
-    icon: Int,
+    icon: ImageVector,
     title: String,
     subtitle: String = "",
     checked: Boolean,
@@ -384,7 +346,7 @@ fun SettingsSwitchCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                painter = painterResource(icon),
+                icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 modifier = Modifier.size(22.dp)

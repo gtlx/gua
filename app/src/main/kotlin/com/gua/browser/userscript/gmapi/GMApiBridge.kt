@@ -3,19 +3,13 @@ package com.gua.browser.userscript.gmapi
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Build
-import android.os.Environment
-import android.provider.Settings
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.gua.browser.core.network.HttpClient
 import com.gua.browser.core.storage.KVStorage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.json.JSONObject
 
 /**
@@ -42,10 +36,8 @@ class GMApiBridge(private val context: Context) {
 
     // ===== GM_setValue / GM_getValue =====
 
-    fun getValue(key: String): String? {
-        return kotlinx.coroutines.runBlocking {
-            storage.getSync("gm_$key")
-        }
+    suspend fun getValue(key: String): String? {
+        return storage.getSync("gm_$key")
     }
 
     fun setValue(key: String, value: String) {
@@ -56,12 +48,10 @@ class GMApiBridge(private val context: Context) {
         storage.delete("gm_$key")
     }
 
-    fun listValues(): List<String> {
-        return kotlinx.coroutines.runBlocking {
-            val keys = storage.keys()
-            keys.filter { it.startsWith("gm_") }
-                .map { it.removePrefix("gm_") }
-        }
+    suspend fun listValues(): List<String> {
+        val keys = storage.keys()
+        return keys.filter { it.startsWith("gm_") }
+            .map { it.removePrefix("gm_") }
     }
 
     // ===== GM_notification =====
@@ -69,10 +59,6 @@ class GMApiBridge(private val context: Context) {
     fun showNotification(title: String?, text: String?, imageUrl: String?) {
         val titleFinal = title ?: "脚本通知"
         val textFinal = text ?: ""
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ 需要运行时权限
-        }
 
         try {
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -129,7 +115,6 @@ class GMApiBridge(private val context: Context) {
                     put("callbackId", callbackId)
                 }
 
-                // 通过 JS 回调返回
                 onHttpResponse(result.toString())
             } catch (e: Exception) {
                 val error = JSONObject().apply {

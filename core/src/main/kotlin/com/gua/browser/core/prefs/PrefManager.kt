@@ -1,15 +1,11 @@
 package com.gua.browser.core.prefs
 
 import android.content.Context
-import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 private val Context.prefStore by preferencesDataStore(name = "app_settings")
 
@@ -26,13 +22,9 @@ class PrefManager(private val context: Context) {
         val DESKTOP_MODE = booleanPreferencesKey("desktop_mode")
         val SEARCH_ENGINE = stringPreferencesKey("search_engine")
         val HOME_PAGE = stringPreferencesKey("home_page")
-        val DEFAULT_ZOOM = floatPreferencesKey("default_zoom")
         val TEXT_SIZE = intPreferencesKey("text_size")
         val SAVE_HISTORY = booleanPreferencesKey("save_history")
-        val SAVE_PASSWORDS = booleanPreferencesKey("save_passwords")
-        val BLOCK_IMAGES = booleanPreferencesKey("block_images")
         val JAVASCRIPT_ENABLED = booleanPreferencesKey("javascript_enabled")
-        val RECENT_URL = stringPreferencesKey("recent_url_")
     }
 
     // ===== 通用存取 =====
@@ -79,13 +71,4 @@ class PrefManager(private val context: Context) {
 
     val javascriptEnabled: Flow<Boolean> = observe(Keys.JAVASCRIPT_ENABLED, true)
     suspend fun setJavascriptEnabled(enabled: Boolean) = set(Keys.JAVASCRIPT_ENABLED, enabled)
-
-    // ===== 最近网址（快速恢复） =====
-    suspend fun saveRecentUrl(tabId: Int, url: String) {
-        set(stringPreferencesKey(Keys.RECENT_URL.name + tabId), url)
-    }
-
-    suspend fun getRecentUrl(tabId: Int): String? {
-        return get(stringPreferencesKey(Keys.RECENT_URL.name + tabId))
-    }
 }

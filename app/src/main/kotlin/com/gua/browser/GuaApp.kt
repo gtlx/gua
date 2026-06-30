@@ -5,9 +5,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import android.util.Log
+import androidx.lifecycle.lifecycleScope
 import com.gua.browser.adblock.AdBlockEngine
 import com.gua.browser.bookmark.BookmarkManager
 import com.gua.browser.bookmark.HistoryManager
+import com.gua.browser.core.storage.KVStorage
 import com.gua.browser.download.AppDownloadManager
 import com.gua.browser.download.GeckoRuntimeDownloader
 import com.gua.browser.settings.AppSettings
@@ -15,6 +17,7 @@ import com.gua.browser.userscript.ScriptManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
@@ -26,6 +29,8 @@ import kotlinx.coroutines.launch
  * - 书签/历史管理器
  * - 应用设置
  * - 通知渠道
+ *
+ * 统一管理协程作用域，在 onTerminate 时清理。
  */
 class GuaApp : Application() {
 
@@ -43,8 +48,11 @@ class GuaApp : Application() {
         private set
     lateinit var runtimeDownloader: GeckoRuntimeDownloader
         private set
+    lateinit var kvStorage: KVStorage
+        private set
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** 全局协程作用域，生命周期跟随 Application */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -78,11 +86,12 @@ class GuaApp : Application() {
     }
 
     private fun initManagers() {
-        scriptManager = ScriptManager(this).also {
+        kvStorage = KVStorage(this, appScope)
+        scriptManager = ScriptManager(this, appScope).also {
             it.init()
         }
         adBlockEngine = AdBlockEngine(this).also {
-            scope.launch { it.init() }
+            appScope.launch { it.init() }
         }
         bookmarkManager = BookmarkManager(this)
         historyManager = HistoryManager(this)
@@ -95,6 +104,7 @@ class GuaApp : Application() {
 
     override fun onTerminate() {
         scriptManager.destroy()
+        appScope.cancel() // 清理所有协程
         super.onTerminate()
     }
 

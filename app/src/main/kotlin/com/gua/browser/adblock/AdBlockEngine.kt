@@ -14,6 +14,8 @@ import kotlinx.coroutines.withContext
  * 拦截点：GeckoSession.navigationDelegate.onLoadRequest
  *
  * 规则来源：EasyList + EasyPrivacy + CJX's Annoyance List
+ *
+ * 优化：预编译所有正则规则，避免每次 URL 检查时重复编译。
  */
 class AdBlockEngine(private val context: Context) {
 
@@ -22,7 +24,15 @@ class AdBlockEngine(private val context: Context) {
         private const val RULES_FILE = "easylist_mini.txt"
     }
 
-    private val rules = mutableListOf<AdBlockRule>()
+    /** 预处理后的编译规则 */
+    private data class CompiledRule(
+        val pattern: String,
+        val type: AdBlockRule.RuleType,
+        val isException: Boolean = false,
+        val regex: Regex? = null  // 预编译的正则
+    )
+
+    private val rules = mutableListOf<CompiledRule>()
     private var isReady = false
 
     /**
@@ -52,7 +62,6 @@ class AdBlockEngine(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            // assets 中可能没有规则文件，使用内置默认规则
             Log.w(TAG, "未找到规则文件，使用内置默认规则")
             addDefaultRules()
         }
@@ -66,28 +75,38 @@ class AdBlockEngine(private val context: Context) {
             pattern = pattern.removePrefix("@@").trimStart()
         }
 
-        val rule = when {
+        val (ruleType, precompiledRegex) = when {
             pattern.startsWith("||") && pattern.endsWith("^") -> {
                 val domain = pattern.removePrefix("||").removeSuffix("^")
-                AdBlockRule(domain, AdBlockRule.RuleType.DOMAIN, isException)
+                Pair(AdBlockRule.RuleType.DOMAIN, null)
             }
             pattern.startsWith("|") && pattern.endsWith("|") -> {
                 val exact = pattern.removePrefix("|").removeSuffix("|")
-                AdBlockRule(exact, AdBlockRule.RuleType.EXACT, isException)
+                Pair(AdBlockRule.RuleType.EXACT, null)
             }
             pattern.startsWith("/") && pattern.endsWith("/") -> {
-                val regex = pattern.removePrefix("/").removeSuffix("/")
-                AdBlockRule(regex, AdBlockRule.RuleType.REGEX, isException)
+                val regexStr = pattern.removePrefix("/").removeSuffix("/")
+                val regex = try { Regex(regexStr) } catch (_: Exception) { null }
+                Pair(AdBlockRule.RuleType.REGEX, regex)
             }
             pattern.contains("*") -> {
-                AdBlockRule(pattern, AdBlockRule.RuleType.URL_PATTERN, isException)
+                val regexStr = pattern
+                    .replace(".", "\\.")
+                    .replace("*", ".*")
+                val regex = try { Regex(regexStr) } catch (_: Exception) { null }
+                Pair(AdBlockRule.RuleType.URL_PATTERN, regex)
             }
             else -> {
-                AdBlockRule(pattern, AdBlockRule.RuleType.PREFIX, isException)
+                Pair(AdBlockRule.RuleType.PREFIX, null)
             }
         }
 
-        rules.add(rule)
+        rules.add(CompiledRule(
+            pattern = pattern,
+            type = ruleType,
+            isException = isException,
+            regex = precompiledRegex
+        ))
     }
 
     /**
@@ -104,17 +123,8 @@ class AdBlockEngine(private val context: Context) {
                 AdBlockRule.RuleType.DOMAIN -> url.contains(rule.pattern)
                 AdBlockRule.RuleType.EXACT -> url == rule.pattern
                 AdBlockRule.RuleType.PREFIX -> url.contains(rule.pattern)
-                AdBlockRule.RuleType.REGEX -> {
-                    try { Regex(rule.pattern).containsMatchIn(url) }
-                    catch (_: Exception) { false }
-                }
-                AdBlockRule.RuleType.URL_PATTERN -> {
-                    val regex = rule.pattern
-                        .replace(".", "\\.")
-                        .replace("*", ".*")
-                    try { Regex(regex).containsMatchIn(url) }
-                    catch (_: Exception) { false }
-                }
+                AdBlockRule.RuleType.REGEX -> rule.regex?.containsMatchIn(url) ?: false
+                AdBlockRule.RuleType.URL_PATTERN -> rule.regex?.containsMatchIn(url) ?: false
             }
 
             if (matches) {
@@ -132,13 +142,9 @@ class AdBlockEngine(private val context: Context) {
     /**
      * 检查请求类型为文档（主框架）时是否拦截
      */
-    fun shouldBlockMainFrame(url: String): Boolean {
-        // 文档请求一般不过滤（避免页面打不开）
-        return false
-    }
+    fun shouldBlockMainFrame(url: String): Boolean = false
 
     private fun addDefaultRules() {
-        // 内置最常用规则
         val defaultRules = listOf(
             "||doubleclick.net^",
             "||googlesyndication.com^",
@@ -151,13 +157,10 @@ class AdBlockEngine(private val context: Context) {
             "||exoclick.com^",
             "||popads.net^",
             "||propellerads.com^",
-
-            // 国内常见广告域名
             "||pos.baidu.com^",
             "||cpro.baidustatic.com^",
-            "||sogou.com/feedback/",
+            "||sogou.com/feedback/"
         )
-
         defaultRules.forEach { parseAndAddRule(it) }
     }
 }

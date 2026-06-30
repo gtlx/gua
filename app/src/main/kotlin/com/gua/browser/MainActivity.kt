@@ -8,13 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,15 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MoreVert
-
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.view.ViewGroup
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.gua.browser.bookmark.Bookmark
 import com.gua.browser.engine.EngineManager
 import com.gua.browser.ui.BrowserState
 import com.gua.browser.ui.BrowserStateSaver
@@ -48,12 +36,22 @@ import com.gua.browser.ui.TabSwitcherPanel
 import com.gua.browser.ui.FindInPagePanel
 import com.gua.browser.ui.bookmark.BookmarkScreen
 import com.gua.browser.ui.bookmark.HistoryScreen
+import com.gua.browser.ui.home.StartPage
 import com.gua.browser.ui.settings.ScriptManagerScreen
 import com.gua.browser.ui.settings.SettingsScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.mozilla.geckoview.GeckoSession
+
 /**
  * GuaBrowser 主界面
  *
  * Via 风格布局 + 完整引擎回调绑定
+ * - 底部/顶部工具栏
+ * - 桌面模式实时生效
+ * - 收藏 / 刷新 / 主页按钮
+ * - 起始页
  */
 class MainActivity : ComponentActivity() {
 
@@ -94,9 +92,12 @@ fun GuaBrowserTheme(
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
-@Composable fun BrowserContent() {
+@Composable
+fun BrowserContent() {
     val context = LocalContext.current
     val app = context.applicationContext as GuaApp
+    val activity = context as? MainActivity
+    val scope = rememberCoroutineScope()
 
     // ===== 浏览器状态 =====
     val state = remember { BrowserState() }
@@ -108,7 +109,7 @@ fun GuaBrowserTheme(
         stateSaver.load(state)
     }
 
-    // 每次状态变化时自动保存
+    // 状态变化自动保存（防抖）
     LaunchedEffect(Unit) {
         snapshotFlow {
             listOf(
@@ -121,7 +122,12 @@ fun GuaBrowserTheme(
         }.collect { stateSaver.save(state) }
     }
 
-    // 返回键处理
+    // 桌面模式变化时实时应用到引擎
+    LaunchedEffect(state.isDesktopMode) {
+        state.applyDesktopMode()
+    }
+
+    // 返回键处理 — Via 风格完整退栈
     BackHandler {
         when {
             state.showSettings -> state.showSettings = false
@@ -130,19 +136,19 @@ fun GuaBrowserTheme(
             state.showHistory -> state.showHistory = false
             state.showTabSwitcher -> state.showTabSwitcher = false
             state.showQuickSettings -> state.showQuickSettings = false
+            state.showFindInPage -> state.showFindInPage = false
             state.isUrlFocused -> state.isUrlFocused = false
             engineManager?.activeTab?.engine?.canGoBack() == true ->
                 engineManager?.activeTab?.engine?.goBack()
             else -> {
-                // 退出应用
+                activity?.finish()
             }
         }
     }
 
-    // 主题跟随夜间模式
+    // 主题
     val isDark = state.isNightMode
     GuaBrowserTheme(darkTheme = isDark) {
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -155,121 +161,69 @@ fun GuaBrowserTheme(
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.systemBars)
                 ) {
-
-                    // 工具栏位置：顶部
+                    // 顶部工具栏
                     if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) {
-                        ViaToolbar(
-                            urlText = state.url,
-                            isFocused = state.isUrlFocused,
-                            isSecure = state.isSecure,
-                            searchEngineLabel = state.searchEngineLabel,
-                            canGoBack = state.canGoBack,
-                            canGoForward = state.canGoForward,
-                            tabCount = state.tabs.size,
-                            showBack = state.showBackBtn,
-                            showForward = state.showForwardBtn,
-                            showHome = state.showHomeBtn,
-                            showTabs = state.showTabsBtn,
-                            showMenu = state.showMenuBtn,
-                            onUrlChange = { state.url = it },
-                            onFocusChange = { state.isUrlFocused = it },
-                            onSearchEngineSwitch = { state.switchSearchEngine() },
-                            onGo = { input ->
-                                state.isUrlFocused = false
-                                engineManager?.activeTab?.engine
-                                    ?.loadUrl(normalizeUrl(input, state.activeSearchEngine))
-                                state.url = input
-                            },
-                            onBack = { engineManager?.activeTab?.engine?.goBack() },
-                            onForward = { engineManager?.activeTab?.engine?.goForward() },
-                            onHome = { engineManager?.activeTab?.engine?.loadUrl("about:start") },
-                            onTabs = { state.showTabSwitcher = true },
-                            onMenu = { state.showQuickSettings = !state.showQuickSettings },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        BuildToolbar(state, engineManager)
                     }
 
-                    // Web 内容（带淡入动画）
+                    // Web 内容区
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
                     ) {
-                        val lifecycleOwner = LocalLifecycleOwner.current
-                        AndroidView(
-                            factory = { ctx ->
-                                FrameLayout(ctx).apply {
-                                    layoutParams = ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    val mgr = EngineManager(this, lifecycleOwner)
-                                    engineManager = mgr
-                                    val tab = mgr.createTab("about:start")
-                                    if (tab != null) {
-                                        state.bindEngine(tab.engine)
-                                        state.updateTabList(mgr)
+                        // 如果是主页，显示 StartPage 覆盖层
+                        if (state.isHomePage && !state.isUrlFocused && !state.isLoading) {
+                            StartPage(
+                                state = state,
+                                onOpenUrl = { url ->
+                                    engineManager?.activeTab?.engine?.loadUrl(url)
+                                },
+                                onFocusSearch = { state.isUrlFocused = true }
+                            )
+                        } else {
+                            // 引擎视图
+                            val lifecycleOwner = LocalLifecycleOwner.current
+                            AndroidView(
+                                factory = { ctx ->
+                                    FrameLayout(ctx).apply {
+                                        layoutParams = ViewGroup.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
+                                        val mgr = EngineManager(this, lifecycleOwner)
+                                        engineManager = mgr
+                                        val tab = mgr.createTab("about:blank")
+                                        if (tab != null) {
+                                            state.bindEngine(tab.engine)
+                                            state.updateTabList(mgr)
+                                        }
                                     }
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
 
-                        androidx.compose.animation.AnimatedVisibility(
+                        // 进度条
+                        AnimatedVisibility(
                             visible = state.progress in 1..99,
-                            enter = fadeIn(), exit = fadeOut()
+                            enter = fadeIn(),
+                            exit = fadeOut()
                         ) {
                             LinearProgressIndicator(
                                 progress = { state.progress / 100f },
-                                modifier = Modifier.fillMaxWidth().background(Color.Transparent),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.Transparent),
                                 color = MaterialTheme.colorScheme.primary,
                                 trackColor = Color.Transparent,
                             )
                         }
-
-                        if (!state.isUrlFocused && state.pageTitle.isNotEmpty() && state.progress >= 100) {
-                            Text(
-                                text = state.pageTitle,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.align(Alignment.TopCenter)
-                                    .padding(top = 6.dp, start = 48.dp, end = 48.dp)
-                            )
-                        }
                     }
 
-                    // 工具栏位置：底部
+                    // 底部工具栏
                     if (state.toolbarPosition == BrowserState.ToolbarPos.BOTTOM) {
-                        ViaToolbar(
-                            urlText = state.url,
-                            isFocused = state.isUrlFocused,
-                            isSecure = state.isSecure,
-                            searchEngineLabel = state.searchEngineLabel,
-                            canGoBack = state.canGoBack,
-                            canGoForward = state.canGoForward,
-                            tabCount = state.tabs.size,
-                            showBack = state.showBackBtn,
-                            showForward = state.showForwardBtn,
-                            showHome = state.showHomeBtn,
-                            showTabs = state.showTabsBtn,
-                            showMenu = state.showMenuBtn,
-                            onUrlChange = { state.url = it },
-                            onFocusChange = { state.isUrlFocused = it },
-                            onSearchEngineSwitch = { state.switchSearchEngine() },
-                            onGo = { input ->
-                                state.isUrlFocused = false
-                                engineManager?.activeTab?.engine
-                                    ?.loadUrl(normalizeUrl(input, state.activeSearchEngine))
-                                state.url = input
-                            },
-                            onBack = { engineManager?.activeTab?.engine?.goBack() },
-                            onForward = { engineManager?.activeTab?.engine?.goForward() },
-                            onHome = { engineManager?.activeTab?.engine?.loadUrl("about:start") },
-                            onTabs = { state.showTabSwitcher = true },
-                            onMenu = { state.showQuickSettings = !state.showQuickSettings },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        BuildToolbar(state, engineManager)
                     }
                 }
 
@@ -281,7 +235,10 @@ fun GuaBrowserTheme(
                     isDesktopMode = state.isDesktopMode,
                     onNightModeChange = { state.isNightMode = it; stateSaver.save(state) },
                     onAdblockChange = { state.isAdblockEnabled = it; stateSaver.save(state) },
-                    onDesktopModeChange = { state.isDesktopMode = it; stateSaver.save(state) },
+                    onDesktopModeChange = {
+                        state.isDesktopMode = it
+                        stateSaver.save(state)
+                    },
                     onScriptManager = {
                         state.showQuickSettings = false
                         state.showScriptManager = true
@@ -300,8 +257,10 @@ fun GuaBrowserTheme(
                     },
                     onAddToHomeScreen = {
                         state.showQuickSettings = false
-                        com.gua.browser.ui.ShortcutHelper.createShortcut(
-                            context, state.pageTitle.ifEmpty { "GuaBrowser" }, state.url.ifEmpty { "about:blank" }
+                        ShortcutHelper.createShortcut(
+                            context,
+                            state.pageTitle.ifEmpty { "GuaBrowser" },
+                            state.url.ifEmpty { "about:blank" }
                         )
                     },
                     onShare = {
@@ -390,9 +349,20 @@ fun GuaBrowserTheme(
                     matchCount = state.findMatchCount,
                     currentIndex = state.findCurrentIndex,
                     onQueryChange = { state.findQuery = it },
-                    onNext = { /* GeckoView 查找下一个 */ },
-                    onPrevious = { /* GeckoView 查找上一个 */ },
-                    onClose = { state.showFindInPage = false }
+                    onNext = {
+                        state.geckoSession?.findInPage(
+                            state.findQuery,
+                            GeckoSession.FIND_FLAG_CASE_SENSITIVITY
+                        )
+                    },
+                    onPrevious = {
+                        state.geckoSession?.findInPage(
+                            state.findQuery,
+                            GeckoSession.FIND_FLAG_BACKWARDS or GeckoSession.FIND_FLAG_CASE_SENSITIVITY
+                        )
+                    },
+                    onClose = { state.showFindInPage = false },
+                    geckoSession = state.geckoSession
                 )
             }
 
@@ -408,12 +378,72 @@ fun GuaBrowserTheme(
 }
 
 // ============================================================
-//  UI 组件
+//  工具栏构建（消除 TOP/BOTTOM 重复）
 // ============================================================
 
-/**
- * Via 风格地址栏 — 带搜索引擎切换
- */
+@Composable
+private fun BuildToolbar(
+    state: BrowserState,
+    engineManager: EngineManager?
+) {
+    ViaToolbar(
+        urlText = state.url,
+        isFocused = state.isUrlFocused,
+        isSecure = state.isSecure,
+        searchEngineLabel = state.searchEngineLabel,
+        canGoBack = state.canGoBack,
+        canGoForward = state.canGoForward,
+        isLoading = state.isLoading,
+        isBookmarked = state.isBookmarked,
+        tabCount = state.tabs.size,
+        showBack = state.showBackBtn,
+        showForward = state.showForwardBtn,
+        showHome = state.showHomeBtn,
+        showTabs = state.showTabsBtn,
+        showMenu = state.showMenuBtn,
+        onUrlChange = { state.url = it },
+        onFocusChange = { state.isUrlFocused = it },
+        onSearchEngineSwitch = { state.switchSearchEngine() },
+        onGo = { input ->
+            state.isUrlFocused = false
+            engineManager?.activeTab?.engine
+                ?.loadUrl(normalizeUrl(input, state.activeSearchEngine))
+            state.url = input
+        },
+        onBack = { engineManager?.activeTab?.engine?.goBack() },
+        onForward = { engineManager?.activeTab?.engine?.goForward() },
+        onRefresh = { engineManager?.activeTab?.engine?.reload() },
+        onStop = { engineManager?.activeTab?.engine?.stopLoading() },
+        onHome = {
+            engineManager?.activeTab?.engine?.loadUrl("about:start")
+        },
+        onBookmark = {
+            val app = com.gua.browser.GuaApp.instance
+            val url = state.url
+            val title = state.pageTitle
+            if (url.isNotBlank() && !url.startsWith("about:")) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    if (app.bookmarkManager.exists(url)) {
+                        // 已收藏 → 删除
+                        val all = app.bookmarkManager.getAll()
+                        val bm = all.find { it.url == url }
+                        if (bm != null) app.bookmarkManager.delete(bm.id)
+                        state.isBookmarked = false
+                    } else {
+                        // 未收藏 → 添加
+                        app.bookmarkManager.add(
+                            Bookmark(title = title.ifEmpty { url }, url = url)
+                        )
+                        state.isBookmarked = true
+                    }
+                }
+            }
+        },
+        onTabs = { state.showTabSwitcher = true },
+        onMenu = { state.showQuickSettings = !state.showQuickSettings },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
 
 // ============================================================
 //  工具函数
