@@ -413,8 +413,7 @@ fun GuaBrowserTheme(
                     keyboardType = KeyboardType.Uri,
                     imeAction = ImeAction.Go
                 ),
-                keyboardActions = KeyboardActions(onGo = { onGo(urlText) }),
-                onFocusChange = { focused: Boolean -> onFocusChange(focused) }
+                keyboardActions = KeyboardActions(onGo = { onGo(urlText) })
             )
 
             Spacer(modifier = Modifier.width(4.dp))
