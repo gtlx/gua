@@ -2,33 +2,30 @@ package com.gua.browser.engine
 
 import android.graphics.Bitmap
 import android.view.View
-import android.view.ViewGroup
-import androidx.lifecycle.LifecycleOwner
+import com.gua.browser.GuaApp
 import org.mozilla.geckoview.GeckoResult
+import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.GeckoView
+import org.mozilla.geckoview.AllowOrDeny
 
 /**
  * GeckoView 引擎实现
- *
- * 基于 Mozilla GeckoView 的浏览器引擎封装。
- * 提供页面加载、导航、JS 交互等核心功能。
  */
 class GeckoEngine(
     private val geckoView: GeckoView,
-    private val lifecycleOwner: LifecycleOwner
+    lifecycleOwner: androidx.lifecycle.LifecycleOwner
 ) : IEngineView {
 
-    private val geckoSession: GeckoSession = GeckoSession()
+    private val geckoSession = GeckoSession()
+    private val runtime = GeckoRuntime.getDefault(geckoView.context)
     private var sessionState: GeckoSession.SessionState? = null
 
-    // ===== 回调监听 =====
     private var navigationListener: NavigationListener? = null
     private var progressListener: ProgressListener? = null
     private var pageListener: PageListener? = null
 
-    // ===== 页面状态 =====
     override var currentUrl: String? = null
         private set
     override var currentTitle: String? = null
@@ -41,14 +38,11 @@ class GeckoEngine(
     }
 
     private fun setupSession() {
-        val settings = GeckoSessionSettings.Builder()
+        geckoSession.settings = GeckoSessionSettings.Builder()
             .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
             .usePrivateMode(false)
             .build()
 
-        geckoSession.settings = settings
-
-        // 注册内容代理（处理页面事件）
         geckoSession.contentDelegate = object : GeckoSession.ContentDelegate {
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 currentTitle = title
@@ -60,7 +54,6 @@ class GeckoEngine(
             }
 
             override fun onExternalResponse(session: GeckoSession, response: GeckoSession.WebResponseInfo) {
-                // 处理下载
                 navigationListener?.onDownloadStart(
                     url = response.uri,
                     contentType = response.contentType ?: "",
@@ -69,21 +62,13 @@ class GeckoEngine(
             }
 
             override fun onCrash(session: GeckoSession) {
-                // 会话崩溃时恢复
-                session.open(geckoView.getRuntime())
-                sessionState?.let { state ->
-                    session.restoreState(state)
-                }
+                session.open(runtime)
+                sessionState?.let { session.restoreState(it) }
             }
         }
 
-        // 注册导航代理
         geckoSession.navigationDelegate = object : GeckoSession.NavigationDelegate {
-            override fun onLocationChange(
-                session: GeckoSession,
-                url: String?,
-                perms: MutableList<GeckoSession.PermissionDelegate.ContentPermission>
-            ) {
+            override fun onLocationChange(session: GeckoSession, url: String?) {
                 currentUrl = url
                 navigationListener?.onLocationChanged(url ?: "")
             }
@@ -96,20 +81,12 @@ class GeckoEngine(
                 navigationListener?.onBackForwardChanged(canGoBack(), canGoForward)
             }
 
-            override fun onLoadRequest(
-                session: GeckoSession,
-                request: GeckoSession.NavigationDelegate.LoadRequest
-            ): GeckoResult<AllowOrDeny>? {
-                // 广告过滤钩子（由 AdBlockEngine 使用）
-                return navigationListener?.onLoadRequest(request.uri)
-                    ?.let { result ->
-                        if (result) GeckoResult.fromValue(AllowOrDeny.ALLOW)
-                        else GeckoResult.fromValue(AllowOrDeny.DENY)
-                    }
+            override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
+                val allow = navigationListener?.onLoadRequest(request.uri) ?: true
+                return GeckoResult.fromValue(if (allow) AllowOrDeny.ALLOW else AllowOrDeny.DENY)
             }
         }
 
-        // 注册进度代理
         geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, url: String) {
                 progress = 10
@@ -121,14 +98,8 @@ class GeckoEngine(
                 progressListener?.onPageFinished(currentUrl ?: "")
             }
 
-            override fun onSecurityChange(
-                session: GeckoSession,
-                securityInfo: GeckoSession.ProgressDelegate.SecurityInformation
-            ) {
-                progressListener?.onSecurityChanged(
-                    isSecure = securityInfo.isSecure,
-                    host = securityInfo.host ?: ""
-                )
+            override fun onSecurityChange(session: GeckoSession, securityInfo: GeckoSession.ProgressDelegate.SecurityInformation) {
+                progressListener?.onSecurityChanged(securityInfo.isSecure, securityInfo.host ?: "")
             }
 
             override fun onProgressChange(session: GeckoSession, progress: Int) {
@@ -137,116 +108,68 @@ class GeckoEngine(
             }
         }
 
-        // 权限代理（定位、相机、麦克风等）
         geckoSession.permissionDelegate = object : GeckoSession.PermissionDelegate {
-            override fun onContentPermissionRequest(
-                session: GeckoSession,
-                permission: ContentPermission
-            ): GeckoResult<Int>? {
-                // 默认允许（后续可改为用户选择）
-                return GeckoResult.fromValue(ContentPermission.VALUE_ALLOW)
+            override fun onContentPermissionRequest(session: GeckoSession, permission: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
+                return GeckoResult.fromValue(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW)
             }
 
-            override fun onAndroidPermissionRequest(
-                session: GeckoSession,
-                permissions: Array<out String>
-            ): GeckoResult<Int>? {
+            override fun onAndroidPermissionRequest(session: GeckoSession, permissions: Array<out String>): GeckoResult<Int>? {
                 return GeckoResult.fromValue(GeckoSession.PermissionDelegate.PERMISSION_ALLOW)
             }
         }
 
-        // 将 Session 绑定到 View
         geckoView.setSession(geckoSession)
-        geckoSession.open(geckoView.getRuntime())
+        geckoSession.open(runtime)
     }
 
     override val view: View get() = geckoView
     override val session: GeckoSession? get() = geckoSession
 
-    // ===== 导航实现 =====
-    override fun loadUrl(url: String) {
-        geckoSession.loadUri(url)
-    }
+    override fun loadUrl(url: String) { geckoSession.loadUri(url) }
 
     override fun goBack(): Boolean {
-        if (geckoSession.canGoBack) {
-            geckoSession.goBack()
-            return true
-        }
+        if (geckoSession.canGoBack) { geckoSession.goBack(); return true }
         return false
     }
 
     override fun goForward(): Boolean {
-        if (geckoSession.canGoForward) {
-            geckoSession.goForward()
-            return true        }
+        if (geckoSession.canGoForward) { geckoSession.goForward(); return true }
         return false
     }
 
-    override fun reload() {
-        geckoSession.reload()
-    }
-
-    override fun stopLoading() {
-        geckoSession.stop()
-    }
-
+    override fun reload() { geckoSession.reload() }
+    override fun stopLoading() { geckoSession.stop() }
     override fun canGoBack(): Boolean = geckoSession.canGoBack
     override fun canGoForward(): Boolean = geckoSession.canGoForward
 
-    // ===== JS 交互 =====
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
-        geckoSession.evaluateJavascript(script) { value ->
-            callback?.invoke(value)
-        }
+        geckoSession.evaluateJavascript(script) { callback?.invoke(it) }
     }
 
-    // ===== 设置 =====
     override fun applySettings(settings: EngineSettings) {
         val builder = GeckoSessionSettings.Builder()
-
-        val userAgentMode = if (settings.desktopMode) {
+        builder.userAgentMode(if (settings.desktopMode)
             GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
-        } else {
-            GeckoSessionSettings.USER_AGENT_MODE_MOBILE
-        }
-        builder.userAgentMode(userAgentMode)
-
+        else
+            GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
         builder.usePrivateMode(false)
-
-        // 文本缩放（通过 JS 注入实现）
-        if (settings.textSize != 100) {
-            val scale = settings.textSize / 100f
-            evaluateJavascript(
-                "document.body.style.zoom = '$scale';",
-                null
-            )
-        }
-
         geckoSession.settings = builder.build()
+
+        if (settings.textSize != 100) {
+            evaluateJavascript("document.body.style.zoom = '${settings.textSize / 100f}';", null)
+        }
     }
 
-    // ===== 截图 =====
     override fun captureBitmap(callback: (Bitmap?) -> Unit) {
-        geckoView.captureBitmap().then { bitmap ->
-            callback(bitmap)
-            GeckoResult.fromValue(bitmap)
-        }
+        geckoView.captureBitmap().then { bmp -> callback(bmp); GeckoResult.fromValue(bmp) }
     }
 
-    // ===== 生命周期 =====
     override fun onResume() {
-        geckoSession?.let { session ->
-            if (!session.isOpen) {
-                session.open(geckoView.getRuntime())
-            }
-        }
+        if (!geckoSession.isOpen) geckoSession.open(runtime)
     }
 
     override fun onPause() {
-        geckoSession?.let { session ->
-            sessionState = session.saveState()
-        }
+        sessionState = geckoSession.saveState()
     }
 
     override fun onDestroy() {
@@ -257,7 +180,7 @@ class GeckoEngine(
     interface NavigationListener {
         fun onLocationChanged(url: String) {}
         fun onBackForwardChanged(canGoBack: Boolean, canGoForward: Boolean) {}
-        fun onLoadRequest(uri: String): Boolean = true  // true = allow
+        fun onLoadRequest(uri: String): Boolean = true
         fun onDownloadStart(url: String, contentType: String, contentLength: Long) {}
     }
 
@@ -273,15 +196,7 @@ class GeckoEngine(
         fun onFullScreenChanged(fullScreen: Boolean) {}
     }
 
-    fun setNavigationListener(listener: NavigationListener) {
-        this.navigationListener = listener
-    }
-
-    fun setProgressListener(listener: ProgressListener) {
-        this.progressListener = listener
-    }
-
-    fun setPageListener(listener: PageListener) {
-        this.pageListener = listener
-    }
+    fun setNavigationListener(listener: NavigationListener) { this.navigationListener = listener }
+    fun setProgressListener(listener: ProgressListener) { this.progressListener = listener }
+    fun setPageListener(listener: PageListener) { this.pageListener = listener }
 }

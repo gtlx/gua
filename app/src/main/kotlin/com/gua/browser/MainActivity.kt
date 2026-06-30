@@ -2,6 +2,7 @@ package com.gua.browser
 
 import android.os.Bundle
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
+import android.view.ViewGroup
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.gua.browser.engine.EngineManager
 import com.gua.browser.ui.BrowserState
@@ -109,7 +111,7 @@ fun BrowserContent() {
                         val lifecycleOwner = LocalLifecycleOwner.current
                         AndroidView(
                             factory = { ctx ->
-                                ViewGroup(ctx).apply {
+                                FrameLayout(ctx).apply {
                                     layoutParams = ViewGroup.LayoutParams(
                                         ViewGroup.LayoutParams.MATCH_PARENT,
                                         ViewGroup.LayoutParams.MATCH_PARENT
@@ -461,7 +463,7 @@ fun BottomToolbar(
                 onClick = onForward
             )
             ToolbarBtn(
-                icon = android.R.drawable.ic_menu_home,
+                icon = android.R.drawable.ic_menu_compass,
                 label = "主页",
                 onClick = onHome
             )
