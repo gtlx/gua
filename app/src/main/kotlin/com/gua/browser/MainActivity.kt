@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BrowserContent() {
+@Composable fun BrowserContent() {
     val context = LocalContext.current
     val app = context.applicationContext as GuaApp
 
@@ -333,7 +333,7 @@ fun BrowserContent() {
  * Via 风格地址栏 — 带搜索引擎切换
  */
 @Composable
-fun UrlBar(
+@Composable fun UrlBar(
     urlText: String,
     isFocused: Boolean,
     isSecure: Boolean,
@@ -405,7 +405,7 @@ fun UrlBar(
                     imeAction = ImeAction.Go
                 ),
                 keyboardActions = KeyboardActions(onGo = { onGo(urlText) }),
-                onFocusChange = { onFocusChange(it) }
+                onFocusChange = { focused -> onFocusChange(focused) }
             )
 
             Spacer(modifier = Modifier.width(4.dp))
@@ -426,7 +426,7 @@ fun UrlBar(
  * Via 风格底部工具栏
  */
 @Composable
-fun BottomToolbar(
+@Composable fun BottomToolbar(
     canGoBack: Boolean,
     canGoForward: Boolean,
     tabCount: Int,
@@ -482,7 +482,7 @@ fun BottomToolbar(
 }
 
 @Composable
-fun ToolbarBtn(
+@Composable fun ToolbarBtn(
     icon: Int,
     label: String,
     enabled: Boolean = true,
