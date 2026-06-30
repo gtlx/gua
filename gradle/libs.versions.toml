@@ -2,7 +2,7 @@
 agp = "8.7.3"
 kotlin = "1.9.24"
 compose = "1.7.6"
-compose-compiler = "1.5.14"
+composeKotlinCompiler = "1.5.14"
 activity-compose = "1.9.3"
 lifecycle = "2.8.7"
 coroutines = "1.9.0"
