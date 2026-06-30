@@ -61,10 +61,12 @@ class ScriptInjector(private val context: Context) {
         try {
             val extDir = createExtensionDir(script)
             val uri = extDir.toURI().toString()
-            runtime?.webExtensionController?.install(uri, WebExtension.Flags.ALLOW_CONTENT_MESSAGING)
-                ?.accept { ext: WebExtension ->
-                    registeredExtensions[script.id] = ext
-                    Log.d(TAG, "已安装: ${script.name} v${script.version}")
+            runtime?.webExtensionController?.install(uri)
+                ?.accept { ext: WebExtension? ->
+                    if (ext != null) {
+                        registeredExtensions[script.id] = ext
+                        Log.d(TAG, "已安装: ${script.name} v${script.version}")
+                    }
                 }
                 ?.exceptionally { e: Throwable ->
                     Log.e(TAG, "安装失败: ${script.name}", e)

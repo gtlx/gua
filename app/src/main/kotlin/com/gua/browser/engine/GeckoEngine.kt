@@ -74,11 +74,13 @@ class GeckoEngine(
             }
 
             override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
-                navigationListener?.onBackForwardChanged(canGoBack, canGoForward())
+                _canGoBack = canGoBack
+                navigationListener?.onBackForwardChanged(canGoBack, _canGoForward)
             }
 
             override fun onCanGoForward(session: GeckoSession, canGoForward: Boolean) {
-                navigationListener?.onBackForwardChanged(canGoBack(), canGoForward)
+                _canGoForward = canGoForward
+                navigationListener?.onBackForwardChanged(_canGoBack, canGoForward)
             }
 
             override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
@@ -114,7 +116,7 @@ class GeckoEngine(
             }
 
             override fun onAndroidPermissionRequest(session: GeckoSession, permissions: Array<out String>): GeckoResult<Int>? {
-                return GeckoResult.fromValue(GeckoSession.PermissionDelegate.PERMISSION_ALLOW)
+                return GeckoResult.fromValue(GeckoSession.PermissionDelegate.PERMISSION_DENY)
             }
         }
 
@@ -127,23 +129,24 @@ class GeckoEngine(
 
     override fun loadUrl(url: String) { geckoSession.loadUri(url) }
 
+    private var _canGoBack = false
+    private var _canGoForward = false
+
     override fun goBack(): Boolean {
-        if (geckoSession.canGoBack) { geckoSession.goBack(); return true }
-        return false
+        try { geckoSession.goBack(); return true } catch (_: Exception) { return false }
     }
 
     override fun goForward(): Boolean {
-        if (geckoSession.canGoForward) { geckoSession.goForward(); return true }
-        return false
+        try { geckoSession.goForward(); return true } catch (_: Exception) { return false }
     }
 
     override fun reload() { geckoSession.reload() }
     override fun stopLoading() { geckoSession.stop() }
-    override fun canGoBack(): Boolean = geckoSession.canGoBack
-    override fun canGoForward(): Boolean = geckoSession.canGoForward
+    override fun canGoBack(): Boolean = _canGoBack
+    override fun canGoForward(): Boolean = _canGoForward
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
-        geckoSession.evaluateJavascript(script) { callback?.invoke(it) }
+        geckoSession.evaluateJavascript(script) { result -> callback?.invoke(result) }
     }
 
     override fun applySettings(settings: EngineSettings) {
@@ -170,9 +173,7 @@ class GeckoEngine(
     }
 
     override fun onPause() {
-        try {
-            sessionState = geckoSession.saveState()
-        } catch (_: Exception) {}
+        // saveState API 在当前版本中不可用
     }
 
     override fun onDestroy() {
