@@ -1,7 +1,6 @@
 package com.gua.browser
 
 import android.os.Bundle
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,7 +30,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.LifecycleOwner
 import android.view.ViewGroup
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.gua.browser.engine.EngineManager
@@ -63,7 +61,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
 @Composable fun BrowserContent() {
     val context = LocalContext.current
     val app = context.applicationContext as GuaApp
