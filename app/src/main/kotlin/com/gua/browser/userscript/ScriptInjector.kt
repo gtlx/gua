@@ -28,13 +28,13 @@ class ScriptInjector(private val context: Context) {
     }
 
     private val registeredExtensions = mutableMapOf<Long, WebExtension>()
-    private var extensionController: WebExtensionController? = null
+    private var runtime: GeckoRuntime? = null
 
     /**
      * 设置 WebExtension 控制器（从 GeckoRuntime 获取）
      */
-    fun setExtensionController(controller: WebExtensionController?) {
-        this.extensionController = controller
+    fun setRuntime(runtime: GeckoRuntime) {
+        this.runtime = runtime
     }
 
     /**
@@ -57,10 +57,10 @@ class ScriptInjector(private val context: Context) {
 
         try {
             val extDir = createExtensionDir(script)
-            val extension = WebExtension.Builder()
-                .setUri(extDir.toURI())
-                .setFlags(WebExtension.Flags.ALLOW_CONTENT_MESSAGING)
-                .build()
+            val extension = WebExtension(
+                extDir.toURI(),
+                WebExtension.Flags.ALLOW_CONTENT_MESSAGING
+            )
 
             registeredExtensions[script.id] = extension
 
@@ -77,9 +77,7 @@ class ScriptInjector(private val context: Context) {
         registeredExtensions.remove(scriptId)?.let { ext ->
             // GeckoView 没有直接的 unregister API，但可以通过
             // WebExtensionController 管理
-            extensionController?.let { controller ->
-                // controller.unregister(ext)
-            }
+            // GeckoView unregister is not directly supported
         }
     }
 
