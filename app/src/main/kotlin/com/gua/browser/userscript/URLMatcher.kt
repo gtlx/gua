@@ -9,7 +9,7 @@ package com.gua.browser.userscript
  *   - **       超级通配符（匹配任意字符，包括 /）
  *   - ?        匹配单个字符（除 /）
  *   - *.ext    匹配任意域名 + 特定扩展名
- *   - *://*/*  任意协议 + 任意域名 + 任意路径
+ *   - 任意协议://任意域名/任意路径
  *   - https://www.google.com/  === 精确匹配
  *   - *://*.example.com/baz/  带子域名
  */
@@ -47,7 +47,7 @@ object URLMatcher {
 
         // 如果模式不包含协议，自动补 *
         val p = if (!pattern.contains("://") && !pattern.startsWith("/")) {
-            "*://*/*".replace("*", "__WILD__") + pattern
+            ("*://*" + "/*").replace("*", "__WILD__") + pattern
         } else pattern
 
         var i = 0
