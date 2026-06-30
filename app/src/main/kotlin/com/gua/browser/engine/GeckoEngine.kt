@@ -15,7 +15,11 @@ class GeckoEngine(
     lifecycleOwner: LifecycleOwner
 ) : IEngineView {
 
-    private val geckoSession = GeckoSession()
+    private val sessionSettings = GeckoSessionSettings.Builder()
+        .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
+        .usePrivateMode(false)
+        .build()
+    private val geckoSession = GeckoSession(sessionSettings)
     private val runtime = GeckoRuntime.getDefault(geckoView.context)
     private var navigationListener: NavigationListener? = null
     private var progressListener: ProgressListener? = null
@@ -33,12 +37,6 @@ class GeckoEngine(
     init { setupSession() }
 
     private fun setupSession() {
-        try {
-            geckoSession.settings = GeckoSessionSettings.Builder()
-                .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
-                .usePrivateMode(false)
-                .build()
-        } catch (_: Exception) {}
         geckoSession.contentDelegate = object : GeckoSession.ContentDelegate {
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 currentTitle = title; pageListener?.onTitleChanged(title ?: "")
@@ -109,7 +107,11 @@ class GeckoEngine(
             GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
         else GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
         sb.usePrivateMode(false)
-        geckoSession.settings = sb.build()
+        try {
+            val f = GeckoSession::class.java.getDeclaredField("mSettings")
+            f.isAccessible = true
+            f.set(geckoSession, sb.build())
+        } catch (_: Exception) {}
     }
 
     override fun captureBitmap(callback: (Bitmap?) -> Unit) { callback(null) }

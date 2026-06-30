@@ -332,7 +332,6 @@ class MainActivity : ComponentActivity() {
 /**
  * Via 风格地址栏 — 带搜索引擎切换
  */
-@Composable
 @Composable fun UrlBar(
     urlText: String,
     isFocused: Boolean,

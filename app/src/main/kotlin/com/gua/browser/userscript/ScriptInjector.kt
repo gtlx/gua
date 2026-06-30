@@ -70,8 +70,7 @@ class ScriptInjector(private val context: Context) {
                 }
                 ?.exceptionally { e: Throwable ->
                     Log.e(TAG, "安装失败: ${script.name}", e)
-                    @Suppress("UNCHECKED_CAST")
-                    null as Nothing?
+                    null
                 }
         } catch (e: Exception) {
             Log.e(TAG, "安装脚本失败: ${script.name}", e)
