@@ -409,8 +409,6 @@ fun GuaBrowserTheme(
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("搜索或输入网址") },
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium,
-                shape = RoundedCornerShape(20.dp),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Uri,
                     imeAction = ImeAction.Go
