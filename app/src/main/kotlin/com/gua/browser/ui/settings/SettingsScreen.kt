@@ -23,6 +23,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.gua.browser.download.GeckoRuntimeDownloader
 import com.gua.browser.settings.DataManager
 import com.gua.browser.ui.BrowserState
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 /**
  * 设置主界面
@@ -237,25 +239,15 @@ fun SettingsScreen(
                         SectionHeader("数据")
                     }
 
+                    val ctx = context
                     item {
                         val exportLauncher = rememberLauncherForActivityResult(
                             ActivityResultContracts.CreateDocument("application/json")
                         ) { uri ->
                             if (uri != null) {
-                                val scope = com.gua.browser.DummyScope()
-                                kotlinx.coroutines.GlobalScope.launch {
+                                GlobalScope.launch {
                                     val json = DataManager.exportToJson(state)
-                                    DataManager.writeUriContent(context, uri, json)
-                                }
-                            }
-                        }
-                        val importLauncher = rememberLauncherForActivityResult(
-                            ActivityResultContracts.OpenDocument()
-                        ) { uri ->
-                            if (uri != null) {
-                                kotlinx.coroutines.GlobalScope.launch {
-                                    val content = DataManager.readUriContent(context, uri)
-                                    if (content != null) DataManager.importFromJson(content, state)
+                                    DataManager.writeUriContent(ctx, uri, json)
                                 }
                             }
                         }
@@ -272,8 +264,8 @@ fun SettingsScreen(
                             ActivityResultContracts.OpenDocument()
                         ) { uri ->
                             if (uri != null) {
-                                kotlinx.coroutines.GlobalScope.launch {
-                                    val content = DataManager.readUriContent(context, uri)
+                                GlobalScope.launch {
+                                    val content = DataManager.readUriContent(ctx, uri)
                                     if (content != null) DataManager.importFromJson(content, state)
                                 }
                             }

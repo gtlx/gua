@@ -5,6 +5,7 @@ import android.net.Uri
 import com.gua.browser.GuaApp
 import com.gua.browser.bookmark.Bookmark
 import com.gua.browser.ui.BrowserState
+import com.gua.browser.ui.SearchEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
