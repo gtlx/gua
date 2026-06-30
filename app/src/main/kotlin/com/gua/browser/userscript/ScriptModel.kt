@@ -1,6 +1,21 @@
 package com.gua.browser.userscript
 
 /**
+ * 注入时机
+ */
+enum class RunAt(val value: String) {
+    DOCUMENT_START("document-start"),
+    DOCUMENT_END("document-end"),
+    DOCUMENT_IDLE("document-idle");
+
+    companion object {
+        fun fromValue(value: String): RunAt = entries.find {
+            it.value == value
+        } ?: DOCUMENT_IDLE
+    }
+}
+
+/**
  * 用户脚本数据模型
  */
 data class UserScript(
@@ -34,17 +49,4 @@ data class UserScript(
 
     /** 原始 JS 代码 */
     val code: String = "",
-
-    /** 注入时机（详见 RunAt）*/
-    enum class RunAt(val value: String) {
-        DOCUMENT_START("document-start"),
-        DOCUMENT_END("document-end"),
-        DOCUMENT_IDLE("document-idle");
-
-        companion object {
-            fun fromValue(value: String): RunAt = entries.find {
-                it.value == value
-            } ?: DOCUMENT_IDLE
-        }
-    }
 )
