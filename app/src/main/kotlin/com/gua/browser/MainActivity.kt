@@ -108,14 +108,17 @@ fun GuaBrowserTheme(
         stateSaver.load(state)
     }
 
-    // 状态变更时自动保存
-    val autoSave = remember {
-        object : Any() {
-            fun save() { stateSaver.save(state) }
-        }
-    }
-    DisposableEffect(Unit) {
-        onDispose { stateSaver.save(state) }
+    // 每次状态变化时自动保存
+    LaunchedEffect(Unit) {
+        snapshotFlow {
+            listOf(
+                state.isNightMode, state.isAdblockEnabled, state.isDesktopMode,
+                state.toolbarPosition, state.showUrlBar,
+                state.showBackBtn, state.showForwardBtn, state.showHomeBtn,
+                state.showTabsBtn, state.showMenuBtn,
+                state.activeSearchEngineIndex, state.searchEngines.toList()
+            )
+        }.collect { stateSaver.save(state) }
     }
 
     // 主题跟随夜间模式
@@ -133,7 +136,6 @@ fun GuaBrowserTheme(
                     modifier = Modifier
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.systemBars)
-                        .consumedWindowInsets(WindowInsets.systemBars)
                 ) {
 
                     // 工具栏位置：顶部
