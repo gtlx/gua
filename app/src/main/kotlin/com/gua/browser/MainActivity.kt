@@ -61,6 +61,33 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Composable
+fun GuaBrowserTheme(
+    darkTheme: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) {
+        darkColorScheme(
+            primary = Color(0xFF90CAF9),
+            onPrimary = Color(0xFF1A1A1A),
+            surface = Color(0xFF2D2D2D),
+            onSurface = Color(0xFFE0E0E0),
+            background = Color(0xFF1E1E1E),
+            onBackground = Color(0xFFE0E0E0)
+        )
+    } else {
+        lightColorScheme(
+            primary = Color(0xFF1565C0),
+            onPrimary = Color.White,
+            surface = Color.White,
+            onSurface = Color(0xFF1C1B1F),
+            background = Color.White,
+            onBackground = Color(0xFF1C1B1F)
+        )
+    }
+    MaterialTheme(colorScheme = colorScheme, content = content)
+}
+
 @Composable fun BrowserContent() {
     val context = LocalContext.current
     val app = context.applicationContext as GuaApp
