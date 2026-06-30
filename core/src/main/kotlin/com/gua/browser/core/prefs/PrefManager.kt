@@ -21,17 +21,17 @@ class PrefManager(private val context: Context) {
 
     // ===== 按键定义 =====
     object Keys {
-        val NIGHT_MODE = boolPreferencesKey("night_mode")
-        val ADBLOCK_ENABLED = boolPreferencesKey("adblock_enabled")
-        val DESKTOP_MODE = boolPreferencesKey("desktop_mode")
+        val NIGHT_MODE = booleanPreferencesKey("night_mode")
+        val ADBLOCK_ENABLED = booleanPreferencesKey("adblock_enabled")
+        val DESKTOP_MODE = booleanPreferencesKey("desktop_mode")
         val SEARCH_ENGINE = stringPreferencesKey("search_engine")
         val HOME_PAGE = stringPreferencesKey("home_page")
         val DEFAULT_ZOOM = floatPreferencesKey("default_zoom")
         val TEXT_SIZE = intPreferencesKey("text_size")
-        val SAVE_HISTORY = boolPreferencesKey("save_history")
-        val SAVE_PASSWORDS = boolPreferencesKey("save_passwords")
-        val BLOCK_IMAGES = boolPreferencesKey("block_images")
-        val JAVASCRIPT_ENABLED = boolPreferencesKey("javascript_enabled")
+        val SAVE_HISTORY = booleanPreferencesKey("save_history")
+        val SAVE_PASSWORDS = booleanPreferencesKey("save_passwords")
+        val BLOCK_IMAGES = booleanPreferencesKey("block_images")
+        val JAVASCRIPT_ENABLED = booleanPreferencesKey("javascript_enabled")
         val RECENT_URL = stringPreferencesKey("recent_url_")
     }
 
