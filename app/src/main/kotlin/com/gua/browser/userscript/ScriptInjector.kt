@@ -2,6 +2,7 @@ package com.gua.browser.userscript
 
 import android.content.Context
 import android.util.Log
+import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.WebExtension
 import org.mozilla.geckoview.WebExtensionController
 import java.io.File

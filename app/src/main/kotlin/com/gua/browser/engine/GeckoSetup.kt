@@ -31,19 +31,7 @@ object GeckoSetup {
 
     private fun createRuntime(context: Context): GeckoRuntime {
         val settings = GeckoRuntimeSettings.Builder()
-            // 控制台输出（调试时有用）
             .consoleOutput(true)
-            // 使用多进程模式（默认开启）
-            .useMultiprocess(true)
-            // 跟踪保护级别
-            .trackingProtectionOptions(
-                GeckoRuntimeSettings.TrackingProtectionOptions.Builder()
-                    .strict(true)  // 严格模式
-                    .build()
-            )
-            // 自动播放策略
-            .autoplayDefault(false)
-            // 远程调试（调试用）
             .remoteDebuggingEnabled(true)
             .build()
 

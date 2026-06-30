@@ -161,7 +161,8 @@ class GeckoEngine(
     }
 
     override fun captureBitmap(callback: (Bitmap?) -> Unit) {
-        geckoView.captureBitmap().then { bmp -> callback(bmp); GeckoResult.fromValue(bmp) }
+        // captureBitmap 在当前 GeckoView 版本中不可用
+        callback(null)
     }
 
     override fun onResume() {
@@ -169,7 +170,9 @@ class GeckoEngine(
     }
 
     override fun onPause() {
-        sessionState = geckoSession.saveState()
+        try {
+            sessionState = geckoSession.saveState()
+        } catch (_: Exception) {}
     }
 
     override fun onDestroy() {
