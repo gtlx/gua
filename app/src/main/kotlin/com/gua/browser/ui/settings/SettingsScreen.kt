@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gua.browser.download.GeckoRuntimeDownloader
 import com.gua.browser.ui.BrowserState
 
 /**
@@ -31,6 +32,7 @@ import com.gua.browser.ui.BrowserState
 @Composable
 fun SettingsScreen(
     state: BrowserState,
+    downloader: GeckoRuntimeDownloader,
     onDismiss: () -> Unit
 ) {
     val showSearchEngines = remember { mutableStateOf(false) }
@@ -144,6 +146,15 @@ fun SettingsScreen(
                         )
                     }
 
+                    // ===== 运行时 =====
+                    item {
+                        SectionHeader("引擎")
+                    }
+
+                    item {
+                        RuntimeDownloadCard(downloader = downloader)
+                    }
+
                     // ===== 关于 =====
                     item {
                         SectionHeader("关于")
@@ -161,6 +172,103 @@ fun SettingsScreen(
                     // 底部留白
                     item { Spacer(modifier = Modifier.height(32.dp)) }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * 运行时下载卡片
+ */
+@Composable
+fun RuntimeDownloadCard(downloader: GeckoRuntimeDownloader) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isDownloading by remember { mutableStateOf(false) }
+    var progress by remember { mutableIntStateOf(0) }
+    var isDownloaded by remember { mutableStateOf(downloader.isRuntimeDownloaded()) }
+    var statusText by remember { mutableStateOf("") }
+
+    // 检查状态
+    LaunchedEffect(Unit) {
+        isDownloaded = downloader.isRuntimeDownloaded()
+        if (isDownloaded) {
+            val mb = downloader.getRuntimeSize() / (1024 * 1024)
+            statusText = "已下载 (${mb}MB)"
+        } else {
+            statusText = "未下载"
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(android.R.drawable.ic_menu_compass),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "GeckoView 内核",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+            }
+
+            if (isDownloading) {
+                Spacer(modifier = Modifier.height(12.dp))
+                LinearProgressIndicator(
+                    progress = { progress / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = "下载中 $progress%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    if (!isDownloaded && !isDownloading) {
+                        isDownloading = true
+                        progress = 0
+                        downloader.download(scope, { p ->
+                            progress = p
+                        }, { success, error ->
+                            isDownloading = false
+                            isDownloaded = success
+                            if (success) {
+                                val mb = downloader.getRuntimeSize() / (1024 * 1024)
+                                statusText = "已下载 (${mb}MB)"
+                            } else {
+                                statusText = error ?: "下载失败"
+                            }
+                        })
+                    }
+                },
+                enabled = !isDownloading && !isDownloaded,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (isDownloaded) "✓ 已下载" else if (isDownloading) "下载中..." else "下载内核")
             }
         }
     }

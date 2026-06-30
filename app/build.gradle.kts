@@ -68,8 +68,8 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
 
-    // GeckoView
-    implementation(libs.geckoview)
+    // GeckoView（运行时下载，不打包进 APK）
+    compileOnly(libs.geckoview)
 
     // Storage
     implementation(libs.room.runtime)

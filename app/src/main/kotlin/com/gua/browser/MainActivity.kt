@@ -342,6 +342,7 @@ fun GuaBrowserTheme(
             if (state.showSettings) {
                 SettingsScreen(
                     state = state,
+                    downloader = app.runtimeDownloader,
                     onDismiss = { state.showSettings = false }
                 )
             }

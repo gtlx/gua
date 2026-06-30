@@ -9,6 +9,7 @@ import com.gua.browser.adblock.AdBlockEngine
 import com.gua.browser.bookmark.BookmarkManager
 import com.gua.browser.bookmark.HistoryManager
 import com.gua.browser.download.AppDownloadManager
+import com.gua.browser.download.GeckoRuntimeDownloader
 import com.gua.browser.settings.AppSettings
 import com.gua.browser.userscript.ScriptManager
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +40,8 @@ class GuaApp : Application() {
     lateinit var downloadManager: AppDownloadManager
         private set
     lateinit var appSettings: AppSettings
+        private set
+    lateinit var runtimeDownloader: GeckoRuntimeDownloader
         private set
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -85,6 +88,7 @@ class GuaApp : Application() {
         historyManager = HistoryManager(this)
         downloadManager = AppDownloadManager(this)
         appSettings = AppSettings(this)
+        runtimeDownloader = GeckoRuntimeDownloader(this)
 
         Log.d("GuaApp", "所有管理器初始化完成")
     }
