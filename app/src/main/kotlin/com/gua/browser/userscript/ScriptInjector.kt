@@ -100,7 +100,7 @@ class ScriptInjector(private val context: Context) {
      *   "name": "示例脚本",
      *   "version": "1.0.0",
      *   "content_scripts": [{
-     *     "matches": ["*://*.example.com/"],
+     *     "matches": ["*://star.example.com/"],
      *     "js": ["gm-wrapper.js"],
      *     "run_at": "document_end"
      *   }]

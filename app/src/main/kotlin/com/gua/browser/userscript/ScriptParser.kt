@@ -14,7 +14,7 @@ package com.gua.browser.userscript
  * // @version      1.0
  * // @description  这是一个示例
  * // @author       user
- * // @match        *://*.example.com/
+ * // @match        *://star.example.com/
  * // @match        https://www.google.com/
  * // @grant        GM_setValue
  * // @grant        GM_getValue

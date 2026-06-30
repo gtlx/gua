@@ -11,7 +11,7 @@ package com.gua.browser.userscript
  *   - *.ext    匹配任意域名 + 特定扩展名
  *   - 任意协议://任意域名/任意路径
  *   - https://www.google.com/  === 精确匹配
- *   - *://*.example.com/baz/  带子域名
+ *   - *://star.example.com/baz/  带子域名
  */
 object URLMatcher {
 
@@ -47,9 +47,8 @@ object URLMatcher {
 
         // 如果模式不包含协议，自动补 *
         val p = if (!pattern.contains("://") && !pattern.startsWith("/")) {
-            // 避免在源码中出现 /* 序列（KAPT stubs 生成器会误解析）
-            val allPath = "/" + '*'
-            ("*://*" + allPath).replace("*", "__WILD__") + pattern
+            val star = '*'
+            ("*:/" + '/' + star + star).replace("*", "__WILD__") + pattern
         } else pattern
 
         var i = 0
