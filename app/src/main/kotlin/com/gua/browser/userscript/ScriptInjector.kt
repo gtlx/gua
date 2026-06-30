@@ -61,19 +61,17 @@ class ScriptInjector(private val context: Context) {
         try {
             val extDir = createExtensionDir(script)
             val uri = extDir.toURI().toString()
-            val controller = runtime?.webExtensionController
-            if (controller != null) {
-                controller.install(uri).accept(
-                    object : org.mozilla.geckoview.WebExtension.InstallCallback {
-                        override fun onSuccess(ext: WebExtension) {
-                            registeredExtensions[script.id] = ext
-                            Log.d(TAG, "已安装: ${script.name} v${script.version}")
-                        }
-                        override fun onError(e: Throwable) {
-                            Log.e(TAG, "安装失败: ${script.name}", e)
-                        }
+            try {
+                val result = runtime?.webExtensionController?.install(uri)
+                result?.then { ext ->
+                    if (ext is WebExtension) {
+                        registeredExtensions[script.id] = ext
+                        Log.d(TAG, "已安装: ${script.name} v${script.version}")
                     }
-                )
+                    GeckoResult.fromValue(ext)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "安装失败: ${script.name}", e)
             }
         } catch (e: Exception) {
             Log.e(TAG, "安装脚本失败: ${script.name}", e)
