@@ -127,7 +127,7 @@ class EngineManager(
     /**
      * 创建空白新标签
      */
-    fun createBlankTab(): Tab = createTab()
+    fun createBlankTab(): Tab? = createTab()
 
     // ===== 清理 =====
 
