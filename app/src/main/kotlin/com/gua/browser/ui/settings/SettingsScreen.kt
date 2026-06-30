@@ -43,6 +43,7 @@ fun SettingsScreen(
     onDismiss: () -> Unit
 ) {
     val showSearchEngines = remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -239,7 +240,6 @@ fun SettingsScreen(
                         SectionHeader("数据")
                     }
 
-                    val ctx = context
                     item {
                         val exportLauncher = rememberLauncherForActivityResult(
                             ActivityResultContracts.CreateDocument("application/json")
@@ -247,7 +247,7 @@ fun SettingsScreen(
                             if (uri != null) {
                                 GlobalScope.launch {
                                     val json = DataManager.exportToJson(state)
-                                    DataManager.writeUriContent(ctx, uri, json)
+                                    DataManager.writeUriContent(context, uri, json)
                                 }
                             }
                         }
@@ -265,7 +265,7 @@ fun SettingsScreen(
                         ) { uri ->
                             if (uri != null) {
                                 GlobalScope.launch {
-                                    val content = DataManager.readUriContent(ctx, uri)
+                                    val content = DataManager.readUriContent(context, uri)
                                     if (content != null) DataManager.importFromJson(content, state)
                                 }
                             }
