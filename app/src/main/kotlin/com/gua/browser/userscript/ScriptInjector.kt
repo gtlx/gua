@@ -2,6 +2,7 @@ package com.gua.browser.userscript
 
 import android.content.Context
 import android.util.Log
+import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.WebExtension
 import org.mozilla.geckoview.WebExtensionController
@@ -62,13 +63,13 @@ class ScriptInjector(private val context: Context) {
             val extDir = createExtensionDir(script)
             val uri = extDir.toURI().toString()
             try {
-                val result = runtime?.webExtensionController?.install(uri)
-                result?.then { ext ->
-                    if (ext is WebExtension) {
+                val controller = runtime?.webExtensionController
+                val result: GeckoResult<WebExtension>? = controller?.install(uri)
+                result?.accept { ext: WebExtension? ->
+                    if (ext != null) {
                         registeredExtensions[script.id] = ext
                         Log.d(TAG, "已安装: ${script.name} v${script.version}")
                     }
-                    GeckoResult.fromValue(ext)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "安装失败: ${script.name}", e)
