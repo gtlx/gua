@@ -17,7 +17,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.gua.browser.download.GeckoRuntimeDownloader
+import com.gua.browser.settings.DataManager
 import com.gua.browser.ui.BrowserState
 
 /**
@@ -226,6 +230,60 @@ fun SettingsScreen(
 
                     item {
                         RuntimeDownloadCard(downloader = downloader)
+                    }
+
+                    // ===== 数据 =====
+                    item {
+                        SectionHeader("数据")
+                    }
+
+                    item {
+                        val exportLauncher = rememberLauncherForActivityResult(
+                            ActivityResultContracts.CreateDocument("application/json")
+                        ) { uri ->
+                            if (uri != null) {
+                                val scope = com.gua.browser.DummyScope()
+                                kotlinx.coroutines.GlobalScope.launch {
+                                    val json = DataManager.exportToJson(state)
+                                    DataManager.writeUriContent(context, uri, json)
+                                }
+                            }
+                        }
+                        val importLauncher = rememberLauncherForActivityResult(
+                            ActivityResultContracts.OpenDocument()
+                        ) { uri ->
+                            if (uri != null) {
+                                kotlinx.coroutines.GlobalScope.launch {
+                                    val content = DataManager.readUriContent(context, uri)
+                                    if (content != null) DataManager.importFromJson(content, state)
+                                }
+                            }
+                        }
+                        SettingsCard(
+                            icon = android.R.drawable.ic_menu_share,
+                            title = "导出数据",
+                            subtitle = "书签、设置、搜索引擎",
+                            onClick = { exportLauncher.launch("gua_backup.json") }
+                        )
+                    }
+
+                    item {
+                        val importLauncher = rememberLauncherForActivityResult(
+                            ActivityResultContracts.OpenDocument()
+                        ) { uri ->
+                            if (uri != null) {
+                                kotlinx.coroutines.GlobalScope.launch {
+                                    val content = DataManager.readUriContent(context, uri)
+                                    if (content != null) DataManager.importFromJson(content, state)
+                                }
+                            }
+                        }
+                        SettingsCard(
+                            icon = android.R.drawable.ic_menu_upload,
+                            title = "导入数据",
+                            subtitle = "恢复书签和设置",
+                            onClick = { importLauncher.launch(arrayOf("application/json")) }
+                        )
                     }
 
                     // ===== 关于 =====

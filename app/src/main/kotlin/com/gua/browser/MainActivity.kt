@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -182,10 +184,6 @@ fun GuaBrowserTheme(
                             .weight(1f)
                             .fillMaxWidth()
                     ) {
-                        val alpha by animateFloatAsState(
-                            targetValue = if (state.progress < 10) 0.85f else 1f,
-                            animationSpec = tween(300)
-                        )
                         val lifecycleOwner = LocalLifecycleOwner.current
                         AndroidView(
                             factory = { ctx ->
@@ -465,7 +463,7 @@ fun GuaBrowserTheme(
             Spacer(modifier = Modifier.width(4.dp))
 
             // 菜单按钮
-            IconButton(onClick = { onFocusChange(false); state.showQuickSettings = true }) {
+            IconButton(onClick = { onFocusChange(false); onGo(urlText) }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "更多",
