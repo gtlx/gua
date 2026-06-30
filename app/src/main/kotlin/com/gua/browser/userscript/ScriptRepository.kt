@@ -159,7 +159,7 @@ class ScriptRepository(context: Context) {
             matches = jsonArrayToList(obj.optJSONArray("match")),
             includes = jsonArrayToList(obj.optJSONArray("include")),
             excludes = jsonArrayToList(obj.optJSONArray("exclude")),
-            runAt = UserScript.RunAt.fromValue(obj.optString("runAt", "document-idle")),
+            runAt = RunAt.fromValue(obj.optString("runAt", "document-idle")),
             grants = jsonArrayToList(obj.optJSONArray("grant")),
             enabled = obj.optBoolean("enabled", true),
             code = obj.optString("code", "")

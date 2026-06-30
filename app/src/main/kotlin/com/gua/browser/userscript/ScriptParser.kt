@@ -54,7 +54,7 @@ object ScriptParser {
             matches = directives.getAll("match"),
             includes = directives.getAll("include"),
             excludes = directives.getAll("exclude"),
-            runAt = UserScript.RunAt.fromValue(
+            runAt = RunAt.fromValue(
                 directives.getFirst("run-at") ?: "document-idle"
             ),
 

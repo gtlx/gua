@@ -43,8 +43,8 @@ class GMApiBridge(private val context: Context) {
     // ===== GM_setValue / GM_getValue =====
 
     fun getValue(key: String): String? {
-        kotlinx.coroutines.runBlocking {
-            return@runBlocking storage.getSync("gm_$key")
+        return kotlinx.coroutines.runBlocking {
+            storage.getSync("gm_$key")
         }
     }
 
@@ -57,9 +57,9 @@ class GMApiBridge(private val context: Context) {
     }
 
     fun listValues(): List<String> {
-        kotlinx.coroutines.runBlocking {
+        return kotlinx.coroutines.runBlocking {
             val keys = storage.keys()
-            return@runBlocking keys.filter { it.startsWith("gm_") }
+            keys.filter { it.startsWith("gm_") }
                 .map { it.removePrefix("gm_") }
         }
     }
