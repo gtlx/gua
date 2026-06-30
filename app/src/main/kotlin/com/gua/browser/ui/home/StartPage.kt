@@ -101,11 +101,11 @@ fun StartPage(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            QuickTile(Icons.Default.Bookmarks, "书签",
+            QuickTile(Icons.Default.List, "书签",
                 onClick = { state.showBookmarks = true })
-            QuickTile(Icons.Default.History, "历史",
+            QuickTile(Icons.Default.Refresh, "历史",
                 onClick = { state.showHistory = true })
-            QuickTile(Icons.Default.Download, "下载",
+            QuickTile(Icons.Default.Done, "下载",
                 onClick = { })
             QuickTile(Icons.Default.Settings, "设置",
                 onClick = { state.showSettings = true })
