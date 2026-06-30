@@ -82,10 +82,10 @@ class PrefManager(private val context: Context) {
 
     // ===== 最近网址（快速恢复） =====
     suspend fun saveRecentUrl(tabId: Int, url: String) {
-        set(Preferences.Key<String>(Keys.RECENT_URL.name + tabId), url)
+        set(stringPreferencesKey(Keys.RECENT_URL.name + tabId), url)
     }
 
     suspend fun getRecentUrl(tabId: Int): String? {
-        return get(Preferences.Key<String>(Keys.RECENT_URL.name + tabId))
+        return get(stringPreferencesKey(Keys.RECENT_URL.name + tabId))
     }
 }
