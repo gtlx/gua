@@ -114,7 +114,7 @@ fun BrowserContent() {
 
     // 状态变化自动保存（防抖）— 拆分为两组，减少不必要的触发
     LaunchedEffect(Unit) {
-        snapshotFlow { listOf(state.isNightMode, state.isAdblockEnabled, state.isDesktopMode) }
+        snapshotFlow { listOf(state.isNightMode, state.isAdblockEnabled, state.isDesktopMode, state.isIncognito) }
             .collect { stateSaver.save(state) }
     }
     LaunchedEffect(Unit) {
@@ -131,12 +131,13 @@ fun BrowserContent() {
             .collect { stateSaver.save(state) }
     }
 
-    // 桌面模式变化时实时应用到引擎
-    LaunchedEffect(state.isDesktopMode) {
+    // 桌面/隐私模式变化时实时应用到引擎
+    LaunchedEffect(state.isDesktopMode, state.isIncognito) {
         state.applyDesktopMode()
     }
 
-    // 返回键处理 — Via 风格完整退栈
+    // 返回键处理 — Via 风格退栈
+    // 1. 关闭面板 → 2. 页面回退 → 3. 回主页 → 4. 退出
     BackHandler {
         when {
             state.showSettings -> state.showSettings = false
@@ -149,9 +150,11 @@ fun BrowserContent() {
             state.isUrlFocused -> state.isUrlFocused = false
             engineManager?.activeTab?.engine?.canGoBack() == true ->
                 engineManager?.activeTab?.engine?.goBack()
-            else -> {
-                activity?.finish()
+            !state.isHomePage -> {
+                state.showHomePage = true
+                engineManager?.activeTab?.engine?.loadUrl("about:blank")
             }
+            else -> activity?.finish()
         }
     }
 
@@ -242,10 +245,15 @@ fun BrowserContent() {
                     isNightMode = state.isNightMode,
                     isAdblockEnabled = state.isAdblockEnabled,
                     isDesktopMode = state.isDesktopMode,
+                    isIncognito = state.isIncognito,
                     onNightModeChange = { state.isNightMode = it; stateSaver.save(state) },
                     onAdblockChange = { state.isAdblockEnabled = it; stateSaver.save(state) },
                     onDesktopModeChange = {
                         state.isDesktopMode = it
+                        stateSaver.save(state)
+                    },
+                    onIncognitoChange = {
+                        state.isIncognito = it
                         stateSaver.save(state)
                     },
                     onScriptManager = {
@@ -431,7 +439,6 @@ private fun BuildToolbar(
         onStop = { engineManager?.activeTab?.engine?.stopLoading() },
         onHome = {
             state.showHomePage = true
-            state.url = "about:blank"
             engineManager?.activeTab?.engine?.loadUrl("about:blank")
         },
         onBookmark = {

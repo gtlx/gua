@@ -29,6 +29,7 @@ private val items = listOf(
     QuickItem("night_mode", "夜间", "🌙"),
     QuickItem("adblock", "广告", "🚫"),
     QuickItem("desktop", "桌面", "🖥️"),
+    QuickItem("incognito", "无痕", "👤"),
     QuickItem("scripts", "脚本", "📜"),
     QuickItem("bookmarks", "书签", "🔖"),
     QuickItem("history", "历史", "📋"),
@@ -38,18 +39,17 @@ private val items = listOf(
     QuickItem("settings", "设置", "⚙️"),
 )
 
-/**
- * Via 风格快捷面板 — 纯白浮层，无阴影，半透明背景
- */
 @Composable
 fun QuickSettingsPanel(
     visible: Boolean,
     isNightMode: Boolean,
     isAdblockEnabled: Boolean,
     isDesktopMode: Boolean,
+    isIncognito: Boolean = false,
     onNightModeChange: (Boolean) -> Unit,
     onAdblockChange: (Boolean) -> Unit,
     onDesktopModeChange: (Boolean) -> Unit,
+    onIncognitoChange: (Boolean) -> Unit = {},
     onScriptManager: () -> Unit,
     onBookmarks: () -> Unit,
     onHistory: () -> Unit,
@@ -70,7 +70,6 @@ fun QuickSettingsPanel(
                 .background(Color.Black.copy(alpha = 0.3f))
                 .clickable(onClick = onDismiss)
         ) {
-            // Via 风格：纯白浮层面板，无阴影
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -82,11 +81,9 @@ fun QuickSettingsPanel(
                     .clickable(enabled = false, onClick = {}),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // 拖拽条
                     Box(
                         modifier = Modifier
-                            .width(36.dp)
-                            .height(3.dp)
+                            .width(36.dp).height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(Color(0xFFDDDDDD))
                             .align(Alignment.CenterHorizontally)
@@ -103,10 +100,13 @@ fun QuickSettingsPanel(
                                 "night_mode" -> isNightMode
                                 "adblock" -> isAdblockEnabled
                                 "desktop" -> isDesktopMode
+                                "incognito" -> isIncognito
                                 else -> false
                             }
-                            val bg = if (active) Color(0xFF1565C0).copy(alpha = 0.1f)
+                            val bg = if (active) Color(0xFFE3F2FD)
                                      else Color(0xFFF5F5F5)
+                            val fg = if (active) Color(0xFF1565C0)
+                                     else Color(0xFF666666)
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -118,6 +118,7 @@ fun QuickSettingsPanel(
                                             "night_mode" -> onNightModeChange(!isNightMode)
                                             "adblock" -> onAdblockChange(!isAdblockEnabled)
                                             "desktop" -> onDesktopModeChange(!isDesktopMode)
+                                            "incognito" -> onIncognitoChange(!isIncognito)
                                             "scripts" -> onScriptManager()
                                             "bookmarks" -> onBookmarks()
                                             "history" -> onHistory()
@@ -127,17 +128,12 @@ fun QuickSettingsPanel(
                                             "settings" -> onSettings()
                                         }
                                     }
-                                    .padding(10.dp)
+                                    .padding(12.dp)
                             ) {
                                 Text(text = item.emoji, fontSize = 22.sp)
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text(
-                                    item.label,
-                                    fontSize = 10.sp,
-                                    textAlign = TextAlign.Center,
-                                    color = if (active) Color(0xFF1565C0) else Color(0xFF888888),
-                                    maxLines = 1
-                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(item.label, fontSize = 10.sp,
+                                    textAlign = TextAlign.Center, color = fg, maxLines = 1)
                             }
                         }
                     }

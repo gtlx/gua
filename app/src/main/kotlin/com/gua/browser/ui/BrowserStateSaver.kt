@@ -14,12 +14,6 @@ import org.json.JSONObject
 
 private val Context.stateStore by preferencesDataStore(name = "browser_state")
 
-/**
- * 浏览器状态持久化
- *
- * 使用防抖（debounce）机制避免每次微小变化都写磁盘。
- * 由外部传入 CoroutineScope 统一管理生命周期。
- */
 class BrowserStateSaver(
     private val context: Context,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
@@ -38,6 +32,8 @@ class BrowserStateSaver(
         val KEY_SHOW_HOME = intPreferencesKey("show_home")
         val KEY_SHOW_TABS = intPreferencesKey("show_tabs")
         val KEY_SHOW_MENU = intPreferencesKey("show_menu")
+        val KEY_INCOGNITO = intPreferencesKey("incognito")
+        val KEY_CUSTOM_AD_RULES = stringPreferencesKey("custom_ad_rules")
     }
 
     private var saveJob: Job? = null
@@ -48,6 +44,7 @@ class BrowserStateSaver(
         state.isNightMode = prefs[KEY_NIGHT_MODE] == 1
         state.isAdblockEnabled = prefs[KEY_ADBLOCK] != 0
         state.isDesktopMode = prefs[KEY_DESKTOP] == 1
+        state.isIncognito = prefs[KEY_INCOGNITO] == 1
         state.toolbarPosition = if (prefs[KEY_TOOLBAR_POS] == 1)
             BrowserState.ToolbarPos.TOP else BrowserState.ToolbarPos.BOTTOM
         state.showUrlBar = prefs[KEY_SHOW_URLBAR] != 0
@@ -57,6 +54,7 @@ class BrowserStateSaver(
         state.showTabsBtn = prefs[KEY_SHOW_TABS] != 0
         state.showMenuBtn = prefs[KEY_SHOW_MENU] != 0
 
+        // 搜索引擎
         val enginesJson = prefs[KEY_SEARCH_ENGINES]
         if (enginesJson != null) {
             try {
@@ -74,19 +72,34 @@ class BrowserStateSaver(
             } catch (_: Exception) {}
         }
         state.activeSearchEngineIndex = prefs[KEY_ACTIVE_SEARCH] ?: 0
+
+        // 自定义广告规则
+        val rulesJson = prefs[KEY_CUSTOM_AD_RULES]
+        if (rulesJson != null) {
+            try {
+                val arr = JSONArray(rulesJson)
+                val rules = mutableListOf<BrowserState.AdRule>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    rules.add(BrowserState.AdRule(
+                        pattern = obj.getString("pattern"),
+                        enabled = obj.optBoolean("enabled", true)
+                    ))
+                }
+                state.customAdRules = rules
+            } catch (_: Exception) {}
+        }
     }
 
-    /**
-     * 防抖保存: 300ms 内的连续调用只会触发一次写盘
-     */
     fun save(state: BrowserState) {
         saveJob?.cancel()
         saveJob = scope.launch {
-            delay(300) // debounce
+            delay(300)
             context.stateStore.edit { prefs ->
                 prefs[KEY_NIGHT_MODE] = if (state.isNightMode) 1 else 0
                 prefs[KEY_ADBLOCK] = if (state.isAdblockEnabled) 1 else 0
                 prefs[KEY_DESKTOP] = if (state.isDesktopMode) 1 else 0
+                prefs[KEY_INCOGNITO] = if (state.isIncognito) 1 else 0
                 prefs[KEY_TOOLBAR_POS] = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) 1 else 0
                 prefs[KEY_SHOW_URLBAR] = if (state.showUrlBar) 1 else 0
                 prefs[KEY_SHOW_BACK] = if (state.showBackBtn) 1 else 0
@@ -105,6 +118,16 @@ class BrowserStateSaver(
                     })
                 }
                 prefs[KEY_SEARCH_ENGINES] = arr.toString()
+
+                // 自定义广告规则
+                val rulesArr = JSONArray()
+                state.customAdRules.forEach { rule ->
+                    rulesArr.put(JSONObject().apply {
+                        put("pattern", rule.pattern)
+                        put("enabled", rule.enabled)
+                    })
+                }
+                prefs[KEY_CUSTOM_AD_RULES] = rulesArr.toString()
             }
         }
     }

@@ -28,8 +28,6 @@ class BrowserState {
     // ===== 导航状态 =====
     var canGoBack by mutableStateOf(false)
     var canGoForward by mutableStateOf(false)
-    /** 是否显示首页覆盖层（独立于 URL，点击主页按钮时设置） */
-    var showHomePage by mutableStateOf(true)
 
     // ===== UI 状态 =====
     var isUrlFocused by mutableStateOf(false)
@@ -42,6 +40,7 @@ class BrowserState {
     var showSettings by mutableStateOf(false)
     var showBookmarks by mutableStateOf(false)
     var showHistory by mutableStateOf(false)
+    var showHomePage by mutableStateOf(true)
 
     // ===== 查找 =====
     var findQuery by mutableStateOf("")
@@ -73,14 +72,17 @@ class BrowserState {
     var isNightMode by mutableStateOf(false)
     var isAdblockEnabled by mutableStateOf(true)
     var isDesktopMode by mutableStateOf(false)
+    var isIncognito by mutableStateOf(false)
+
+    // ===== 自定义广告规则 =====
+    data class AdRule(val pattern: String, val enabled: Boolean = true)
+    var customAdRules by mutableStateOf<List<AdRule>>(emptyList())
 
     // ===== 书签状态 =====
     var isBookmarked by mutableStateOf(false)
 
-    // ===== 引擎引用（查找功能需要） =====
+    // ===== 引擎引用 =====
     var geckoSession: GeckoSession? by mutableStateOf(null)
-
-    /** 当前引用的引擎（用于应用设置） */
     private var currentEngine: GeckoEngine? = null
 
     // ===== 搜索 =====
@@ -95,20 +97,15 @@ class BrowserState {
     )
     var activeSearchEngineIndex by mutableIntStateOf(0)
 
-    /** 当前搜索引擎 */
     val activeSearchEngine: SearchEngine
         get() = searchEngines.getOrElse(activeSearchEngineIndex) { searchEngines.first() }
 
-    /** 搜索图标显示的简短标签 */
     val searchEngineLabel: String
         get() = activeSearchEngine.shortName
 
-    /** 是否在主页（显示 StartPage 覆盖层）
-     *  - showHomePage 标记优先（点击主页按钮时设置）
-     *  - 未设置时根据 URL 判断
-     */
+    /** Via 风格：showHomePage 标记优先，URL 仅作降级判断 */
     val isHomePage: Boolean
-        get() = showHomePage || url == "about:blank" || url.isEmpty()
+        get() = showHomePage
 
     // ===== 引擎回调绑定 =====
     fun bindEngine(engine: GeckoEngine?) {
@@ -119,11 +116,9 @@ class BrowserState {
         engine.setNavigationListener(object : GeckoEngine.NavigationListener {
             override fun onLocationChanged(url: String) {
                 this@BrowserState.url = url
-                // 导航到真实页面时隐藏首页覆盖层
                 if (url.isNotEmpty() && url != "about:blank") {
                     showHomePage = false
                 }
-                // 每次 URL 变化时检查书签状态
                 checkBookmarkStatus(url)
             }
 
@@ -133,9 +128,15 @@ class BrowserState {
             }
 
             override fun onLoadRequest(uri: String): Boolean {
-                return if (isAdblockEnabled) {
-                    !com.gua.browser.GuaApp.instance.adBlockEngine.shouldBlock(uri)
-                } else true
+                // 广告过滤：内置规则 + 自定义规则
+                if (isAdblockEnabled) {
+                    if (com.gua.browser.GuaApp.instance.adBlockEngine.shouldBlock(uri)) return false
+                    // 检查自定义规则
+                    for (rule in customAdRules) {
+                        if (rule.enabled && uri.contains(rule.pattern)) return false
+                    }
+                }
+                return true
             }
         })
 
@@ -148,7 +149,6 @@ class BrowserState {
             override fun onPageFinished(url: String) {
                 isLoading = false
                 progress = 100
-                // 自动记录浏览历史（跳过 about: 页面）
                 if (url.isNotBlank() && !url.startsWith("about:")) {
                     com.gua.browser.GuaApp.instance.appScope.launch {
                         com.gua.browser.GuaApp.instance.historyManager.recordVisit(
@@ -175,29 +175,38 @@ class BrowserState {
             }
         })
 
-        // 应用当前桌面模式设置
+        engine.setFindListener(object : GeckoEngine.FindListener {
+            override fun onFindResult(result: org.mozilla.geckoview.GeckoSession.FinderResult) {
+                findMatchCount = result.total
+                findCurrentIndex = result.current + 1
+            }
+        })
+
         applyDesktopMode()
     }
 
-    /** 应用桌面模式设置到当前引擎 */
+    /** 应用桌面/隐私模式，重建会话后重新加载当前页面 */
     fun applyDesktopMode() {
+        val currentUrl = this.url
         currentEngine?.applySettings(
-            EngineSettings(desktopMode = isDesktopMode)
+            EngineSettings(
+                desktopMode = isDesktopMode,
+                privateMode = isIncognito
+            )
         )
+        if (currentUrl.isNotBlank() && !currentUrl.startsWith("about:")) {
+            currentEngine?.loadUrl(currentUrl)
+        }
     }
 
     /** 检查当前 URL 是否已收藏 */
     private fun checkBookmarkStatus(url: String) {
         if (url.isBlank() || url.startsWith("about:")) {
-            isBookmarked = false
-            return
+            isBookmarked = false; return
         }
-        // 异步检查，使用 App 全局作用域避免泄漏
         com.gua.browser.GuaApp.instance.appScope.launch {
             val exists = com.gua.browser.GuaApp.instance.bookmarkManager.exists(url)
-            if (exists != isBookmarked) {
-                isBookmarked = exists
-            }
+            if (exists != isBookmarked) isBookmarked = exists
         }
     }
 
@@ -208,6 +217,19 @@ class BrowserState {
 
     fun switchSearchEngine() {
         activeSearchEngineIndex = (activeSearchEngineIndex + 1) % searchEngines.size
+    }
+
+    // ===== 自定义广告规则管理 =====
+    fun addCustomAdRule(pattern: String) {
+        if (pattern.isNotBlank()) {
+            customAdRules = customAdRules + AdRule(pattern.trim())
+        }
+    }
+
+    fun removeCustomAdRule(index: Int) {
+        if (index in customAdRules.indices) {
+            customAdRules = customAdRules.toMutableList().also { it.removeAt(index) }
+        }
     }
 
     // ===== 搜索引擎管理 =====
@@ -226,35 +248,25 @@ class BrowserState {
     }
 
     fun setActiveSearchEngine(index: Int) {
-        if (index in searchEngines.indices) {
-            activeSearchEngineIndex = index
-        }
+        if (index in searchEngines.indices) activeSearchEngineIndex = index
     }
 
     fun moveSearchEngineUp(index: Int) {
         if (index <= 0) return
         val list = searchEngines.toMutableList()
-        val item = list.removeAt(index)
-        list.add(index - 1, item)
+        val item = list.removeAt(index); list.add(index - 1, item)
         searchEngines = list
-        if (activeSearchEngineIndex == index) {
-            activeSearchEngineIndex = index - 1
-        } else if (activeSearchEngineIndex == index - 1) {
-            activeSearchEngineIndex = index
-        }
+        if (activeSearchEngineIndex == index) activeSearchEngineIndex = index - 1
+        else if (activeSearchEngineIndex == index - 1) activeSearchEngineIndex = index
     }
 
     fun moveSearchEngineDown(index: Int) {
         if (index >= searchEngines.size - 1) return
         val list = searchEngines.toMutableList()
-        val item = list.removeAt(index)
-        list.add(index + 1, item)
+        val item = list.removeAt(index); list.add(index + 1, item)
         searchEngines = list
-        if (activeSearchEngineIndex == index) {
-            activeSearchEngineIndex = index + 1
-        } else if (activeSearchEngineIndex == index + 1) {
-            activeSearchEngineIndex = index
-        }
+        if (activeSearchEngineIndex == index) activeSearchEngineIndex = index + 1
+        else if (activeSearchEngineIndex == index + 1) activeSearchEngineIndex = index
     }
 }
 
@@ -263,10 +275,9 @@ class BrowserState {
  */
 data class SearchEngine(
     val name: String,
-    val urlTemplate: String,  // 含 %s 占位符
-    val shortName: String     // 地址栏显示的 1-2 字符标签
+    val urlTemplate: String,
+    val shortName: String
 ) {
-    /** 将搜索词转为完整 URL */
     fun buildSearchUrl(query: String): String {
         return urlTemplate.replace("%s", java.net.URLEncoder.encode(query, "UTF-8"))
     }

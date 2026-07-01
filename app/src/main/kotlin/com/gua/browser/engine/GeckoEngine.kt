@@ -83,12 +83,17 @@ class GeckoEngine(
         geckoSession.permissionDelegate = object : GeckoSession.PermissionDelegate {
             override fun onContentPermissionRequest(session: GeckoSession, perm: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
                 // 安全：地理位置默认允许，其他高风险权限默认拒绝
-                val result = if (perm.type == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION) {
-                    GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
-                } else {
-                    GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
+                val allow = try {
+                    val typeField = GeckoSession.PermissionDelegate.ContentPermission::class.java.getField("type")
+                    val permType = typeField.getInt(perm)
+                    permType == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
+                } catch (_: Exception) {
+                    false
                 }
-                return GeckoResult.fromValue(result)
+                return GeckoResult.fromValue(
+                    if (allow) GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
+                    else GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
+                )
             }
         }
         geckoView.setSession(geckoSession)
@@ -118,16 +123,10 @@ class GeckoEngine(
     override fun canGoForward(): Boolean = _canGoForward
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
-        try {
-            val result = geckoSession.evaluateJavascript(script)
-            if (callback != null) {
-                result.accept { value ->
-                    callback(value)
-                }
-            }
-        } catch (_: Exception) {
-            callback?.invoke(null)
-        }
+        // GeckoView 自 110+ 起移除 evaluateJavascript 公开 API。
+        // JS 注入使用 WebExtension 机制（ScriptInjector），
+        // 此处保持兼容空实现供 FindInPage 等非关键功能降级使用。
+        callback?.invoke(null)
     }
 
     override fun applySettings(settings: EngineSettings) {
@@ -138,7 +137,8 @@ class GeckoEngine(
             else
                 GeckoSessionSettings.USER_AGENT_MODE_MOBILE
         )
-        builder.usePrivateMode(false)
+        builder.usePrivateMode(settings.privateMode)
+        builder.useTrackingProtection(true)
         sessionSettings = builder.build()
 
         // 重建会话以应用新设置，并更新 geckoSession 引用
