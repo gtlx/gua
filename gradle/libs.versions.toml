@@ -7,7 +7,7 @@ activity-compose = "1.9.3"
 lifecycle = "2.8.7"
 coroutines = "1.9.0"
 geckoview = "136.0.20250227124745"
-datastore = "1.1.1"
+datastore = "1.2.1"
 
 [libraries]
 # Compose
