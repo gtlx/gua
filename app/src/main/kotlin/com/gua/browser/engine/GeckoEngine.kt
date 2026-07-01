@@ -50,11 +50,6 @@ class GeckoEngine(
             override fun onCrash(session: GeckoSession) { session.open(runtime) }
         }
         geckoSession.navigationDelegate = object : GeckoSession.NavigationDelegate {
-            override fun onLocationChange(session: GeckoSession, url: String?) {
-                val safeUrl = url ?: ""
-                currentUrl = safeUrl
-                navigationListener?.onLocationChanged(safeUrl)
-            }
             override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
                 _canGoBack = canGoBack
                 navigationListener?.onBackForwardChanged(canGoBack, _canGoForward)
@@ -73,6 +68,7 @@ class GeckoEngine(
         geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, url: String) {
                 currentUrl = url
+                navigationListener?.onLocationChanged(url)
                 progress = 10; progressListener?.onPageStarted(url)
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
