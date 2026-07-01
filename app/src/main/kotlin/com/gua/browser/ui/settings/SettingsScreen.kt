@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.gua.browser.settings.DataManager
@@ -42,6 +43,13 @@ fun SettingsScreen(
     val showToolbarSettings = remember { mutableStateOf(false) }
     val showAdBlockRules = remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    // 子菜单返回：硬件返回键先回到主设置界面，不直接退出
+    BackHandler(showSearchEngines.value || showToolbarSettings.value || showAdBlockRules.value) {
+        showSearchEngines.value = false
+        showToolbarSettings.value = false
+        showAdBlockRules.value = false
+    }
 
     Box(
         modifier = Modifier

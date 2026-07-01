@@ -47,12 +47,12 @@ class BrowserStateSaver(
         state.isIncognito = prefs[KEY_INCOGNITO] == 1
         state.toolbarPosition = if (prefs[KEY_TOOLBAR_POS] == 1)
             BrowserState.ToolbarPos.TOP else BrowserState.ToolbarPos.BOTTOM
-        state.showUrlBar = prefs[KEY_SHOW_URLBAR] != 0
-        state.showBackBtn = prefs[KEY_SHOW_BACK] != 0
-        state.showForwardBtn = prefs[KEY_SHOW_FORWARD] != 0
-        state.showHomeBtn = prefs[KEY_SHOW_HOME] != 0
-        state.showTabsBtn = prefs[KEY_SHOW_TABS] != 0
-        state.showMenuBtn = prefs[KEY_SHOW_MENU] != 0
+        state.showUrlBar = (prefs[KEY_SHOW_URLBAR] ?: 1) == 1
+        state.showBackBtn = (prefs[KEY_SHOW_BACK] ?: 0) == 1
+        state.showForwardBtn = (prefs[KEY_SHOW_FORWARD] ?: 0) == 1
+        state.showHomeBtn = (prefs[KEY_SHOW_HOME] ?: 1) == 1
+        state.showTabsBtn = (prefs[KEY_SHOW_TABS] ?: 1) == 1
+        state.showMenuBtn = (prefs[KEY_SHOW_MENU] ?: 1) == 1
 
         // 搜索引擎
         val enginesJson = prefs[KEY_SEARCH_ENGINES]
