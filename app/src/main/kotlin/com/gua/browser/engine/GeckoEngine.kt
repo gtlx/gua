@@ -50,6 +50,11 @@ class GeckoEngine(
             override fun onCrash(session: GeckoSession) { session.open(runtime) }
         }
         geckoSession.navigationDelegate = object : GeckoSession.NavigationDelegate {
+            override fun onLocationChange(session: GeckoSession, url: String?) {
+                val safeUrl = url ?: ""
+                currentUrl = safeUrl
+                navigationListener?.onLocationChanged(safeUrl)
+            }
             override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
                 _canGoBack = canGoBack
                 navigationListener?.onBackForwardChanged(canGoBack, _canGoForward)
@@ -67,6 +72,7 @@ class GeckoEngine(
         }
         geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, url: String) {
+                currentUrl = url
                 progress = 10; progressListener?.onPageStarted(url)
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
@@ -187,6 +193,14 @@ class GeckoEngine(
     override fun onResume() { if (!geckoSession.isOpen) geckoSession.open(runtime) }
     override fun onPause() {}
     override fun onDestroy() { geckoSession.close() }
+
+    // ===== 查找监听器 =====
+    private var findListener: FindListener? = null
+    fun setFindListener(l: FindListener) { findListener = l }
+
+    interface FindListener {
+        fun onFindResult(total: Int, current: Int) {}
+    }
 
     // ===== 监听器接口 =====
     interface NavigationListener {

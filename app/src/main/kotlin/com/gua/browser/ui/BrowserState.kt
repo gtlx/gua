@@ -176,9 +176,9 @@ class BrowserState {
         })
 
         engine.setFindListener(object : GeckoEngine.FindListener {
-            override fun onFindResult(result: org.mozilla.geckoview.GeckoSession.FinderResult) {
-                findMatchCount = result.total
-                findCurrentIndex = result.current + 1
+            override fun onFindResult(total: Int, current: Int) {
+                findMatchCount = total
+                findCurrentIndex = current + 1
             }
         })
 

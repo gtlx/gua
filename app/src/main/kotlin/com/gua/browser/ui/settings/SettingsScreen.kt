@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
@@ -152,7 +153,7 @@ private fun MainSettingsScreen(
             }
             item {
                 SettingsItem(
-                    icon = Icons.Outlined.ListAlt,
+                    icon = Icons.AutoMirrored.Outlined.ListAlt,
                     title = "自定义广告规则",
                     subtitle = "${state.customAdRules.size} 条规则",
                     onClick = onOpenAdBlockRules
@@ -268,7 +269,7 @@ fun ToolbarSettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "返回", tint = Color(0xFF333333))
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回", tint = Color(0xFF333333))
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("工具栏设置", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
@@ -303,7 +304,7 @@ fun ToolbarSettingsScreen(
             item { SectionTitle("按钮显示") }
             item {
                 SettingsSwitchItem(
-                    icon = Icons.Outlined.ArrowBack,
+                    icon = Icons.AutoMirrored.Outlined.ArrowBack,
                     title = "后退按钮",
                     checked = state.showBackBtn,
                     onCheckedChange = { state.showBackBtn = it }
@@ -311,7 +312,7 @@ fun ToolbarSettingsScreen(
             }
             item {
                 SettingsSwitchItem(
-                    icon = Icons.Outlined.ArrowForward,
+                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
                     title = "前进按钮",
                     checked = state.showForwardBtn,
                     onCheckedChange = { state.showForwardBtn = it }
@@ -371,7 +372,7 @@ fun AdBlockRulesScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "返回", tint = Color(0xFF333333))
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回", tint = Color(0xFF333333))
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("自定义广告规则", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))

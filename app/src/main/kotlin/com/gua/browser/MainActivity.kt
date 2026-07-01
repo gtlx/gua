@@ -100,8 +100,6 @@ fun BrowserContent() {
     val context = LocalContext.current
     val app = context.applicationContext as GuaApp
     val activity = context as? MainActivity
-    val scope = rememberCoroutineScope()
-
     // ===== 浏览器状态 =====
     val state = remember { BrowserState() }
     var engineManager by remember { mutableStateOf<EngineManager?>(null) }
@@ -136,8 +134,8 @@ fun BrowserContent() {
         state.applyDesktopMode()
     }
 
-    // 返回键处理 — Via 风格退栈
-    // 1. 关闭面板 → 2. 页面回退 → 3. 回主页 → 4. 退出
+    // 返回键处理
+    // 1. 关闭面板 → 2. 页面回退 → 3. 退出
     BackHandler {
         when {
             state.showSettings -> state.showSettings = false
@@ -150,10 +148,6 @@ fun BrowserContent() {
             state.isUrlFocused -> state.isUrlFocused = false
             engineManager?.activeTab?.engine?.canGoBack() == true ->
                 engineManager?.activeTab?.engine?.goBack()
-            !state.isHomePage -> {
-                state.showHomePage = true
-                engineManager?.activeTab?.engine?.loadUrl("about:blank")
-            }
             else -> activity?.finish()
         }
     }
