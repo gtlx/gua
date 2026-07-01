@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,6 +59,21 @@ fun QuickSettingsPanel(
     onSettings: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    // 面板位置：工具栏在顶部时弹出在顶部，在底部时弹出在底部
+    val panelAlignment = if (toolbarAtTop) Alignment.TopCenter else Alignment.BottomCenter
+    val slideAnim = if (toolbarAtTop)
+        slideInVertically(initialOffsetY = { -it }) + fadeIn()
+    else
+        slideInVertically(initialOffsetY = { it }) + fadeIn()
+    val slideOutAnim = if (toolbarAtTop)
+        slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+    else
+        slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    val shape = if (toolbarAtTop)
+        RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp)
+    else
+        RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(),
@@ -71,30 +85,21 @@ fun QuickSettingsPanel(
                 .background(Color.Black.copy(alpha = 0.3f))
                 .clickable(onClick = onDismiss)
         ) {
-            // 面板位置跟随工具栏
-            val panelAlignment = if (toolbarAtTop) Alignment.TopCenter else Alignment.BottomCenter
-            val slideIn = if (toolbarAtTop) slideInVertically(initialOffsetY = { -it }) else slideInVertically(initialOffsetY = { it })
-            val slideOut = if (toolbarAtTop) slideOutVertically(targetOffsetY = { -it }) else slideOutVertically(targetOffsetY = { it })
-
+            // 面板内容 — 从工具栏方向滑入
             AnimatedVisibility(
-                visible = true,
-                enter = slideIn + fadeIn(),
-                exit = slideOut + fadeOut()
+                visible = visible,
+                enter = slideAnim,
+                exit = slideOutAnim,
+                modifier = Modifier.align(panelAlignment)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(panelAlignment)
-                        .background(
-                            Color.White,
-                            if (toolbarAtTop)
-                                RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp)
-                            else
-                                RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)
-                        )
-                        .clickable(enabled = false, onClick = {}),
+                        .background(Color.White, shape)
+                        .clickable(enabled = false, onClick = {})
+                        .padding(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column {
                         // 拖拽指示条
                         Box(
                             modifier = Modifier
