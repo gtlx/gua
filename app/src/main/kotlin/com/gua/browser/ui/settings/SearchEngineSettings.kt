@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -152,17 +155,17 @@ fun SearchEngineSettings(
                         Row {
                             if (index > 0) {
                                 IconButton(onClick = { onMoveUp(index) }, modifier = Modifier.size(28.dp)) {
-                                    Icon(KeyboardArrowUp, "上移", tint = Color(0xFFBBBBBB), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.KeyboardArrowUp, "上移", tint = Color(0xFFBBBBBB), modifier = Modifier.size(16.dp))
                                 }
                             }
                             if (index < searchEngines.size - 1) {
                                 IconButton(onClick = { onMoveDown(index) }, modifier = Modifier.size(28.dp)) {
-                                    Icon(KeyboardArrowDown, "下移", tint = Color(0xFFBBBBBB), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.KeyboardArrowDown, "下移", tint = Color(0xFFBBBBBB), modifier = Modifier.size(16.dp))
                                 }
                             }
                             if (searchEngines.size > 1) {
                                 IconButton(onClick = { showDeleteConfirm = index }, modifier = Modifier.size(28.dp)) {
-                                    Icon(Close, "删除", tint = Color(0xFFCCCCCC), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Outlined.Close, "删除", tint = Color(0xFFCCCCCC), modifier = Modifier.size(16.dp))
                                 }
                             }
                         }

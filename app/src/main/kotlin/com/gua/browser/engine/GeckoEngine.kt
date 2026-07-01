@@ -173,7 +173,7 @@ class GeckoEngine(
         val newSession = GeckoSession(sessionSettings)
         copyDelegates(oldSession, newSession)
         // 复制查找代理
-        newSession.finder.delegate = oldSession.finder.delegate
+        newSession.finder.setDelegate(oldSession.finder.getDelegate())
         geckoView.setSession(newSession)
         newSession.open(runtime)
         geckoSession = newSession  // 更新引用，保证后续操作在新 session 上
