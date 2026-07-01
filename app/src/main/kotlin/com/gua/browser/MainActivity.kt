@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -130,7 +132,7 @@ fun BrowserContent() {
     }
 
     // 桌面/隐私模式变化时实时应用到引擎
-    LaunchedEffect(state.isDesktopMode, state.isIncognito) {
+    LaunchedEffect(state.isDesktopMode, state.isIncognito, state.isNightMode) {
         state.applyDesktopMode()
     }
 
@@ -138,6 +140,7 @@ fun BrowserContent() {
     // 1. 关闭面板 → 2. 页面回退 → 3. 退出
     BackHandler {
         when {
+            state.showSearchEnginePicker -> state.showSearchEnginePicker = false
             state.showSettings -> state.showSettings = false
             state.showScriptManager -> state.showScriptManager = false
             state.showBookmarks -> state.showBookmarks = false
@@ -240,6 +243,7 @@ fun BrowserContent() {
                     isAdblockEnabled = state.isAdblockEnabled,
                     isDesktopMode = state.isDesktopMode,
                     isIncognito = state.isIncognito,
+                    toolbarAtTop = state.toolbarPosition == BrowserState.ToolbarPos.TOP,
                     onNightModeChange = { state.isNightMode = it; stateSaver.save(state) },
                     onAdblockChange = { state.isAdblockEnabled = it; stateSaver.save(state) },
                     onDesktopModeChange = {
@@ -382,6 +386,56 @@ fun BrowserContent() {
                 )
             }
 
+            // ===== 搜索引擎选择器 =====
+            if (state.showSearchEnginePicker) {
+                AlertDialog(
+                    onDismissRequest = { state.showSearchEnginePicker = false },
+                    title = { Text("选择搜索引擎", fontWeight = FontWeight.Medium) },
+                    text = {
+                        Column {
+                            state.searchEngines.forEachIndexed { index, engine ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            state.activeSearchEngineIndex = index
+                                            stateSaver.save(state)
+                                            state.showSearchEnginePicker = false
+                                        }
+                                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = engine.shortName.take(2),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (index == state.activeSearchEngineIndex)
+                                            MaterialTheme.colorScheme.primary else Color(0xFF888888),
+                                        modifier = Modifier.width(28.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = engine.name,
+                                        fontSize = 15.sp,
+                                        color = if (index == state.activeSearchEngineIndex)
+                                            MaterialTheme.colorScheme.primary else Color(0xFF333333)
+                                    )
+                                    if (index == state.activeSearchEngineIndex) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("✓", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { state.showSearchEnginePicker = false }) {
+                            Text("取消")
+                        }
+                    }
+                )
+            }
+
             // ===== 设置界面 =====
             if (state.showSettings) {
                 SettingsScreen(
@@ -419,7 +473,7 @@ private fun BuildToolbar(
         showMenu = state.showMenuBtn,
         onUrlChange = { state.url = it },
         onFocusChange = { state.isUrlFocused = it },
-        onSearchEngineSwitch = { state.switchSearchEngine() },
+        onSearchEngineSwitch = { state.showSearchEnginePicker = true },
         onGo = { input ->
             state.isUrlFocused = false
             val resolvedUrl = normalizeUrl(input, state.activeSearchEngine)

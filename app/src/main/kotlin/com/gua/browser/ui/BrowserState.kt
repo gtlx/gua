@@ -41,6 +41,7 @@ class BrowserState {
     var showBookmarks by mutableStateOf(false)
     var showHistory by mutableStateOf(false)
     var showHomePage by mutableStateOf(true)
+    var showSearchEnginePicker by mutableStateOf(false)
 
     // ===== 查找 =====
     var findQuery by mutableStateOf("")
@@ -62,8 +63,8 @@ class BrowserState {
     var bgColor by mutableStateOf(-1)
 
     // ===== 工具栏按钮显示 =====
-    var showBackBtn by mutableStateOf(true)
-    var showForwardBtn by mutableStateOf(true)
+    var showBackBtn by mutableStateOf(false)
+    var showForwardBtn by mutableStateOf(false)
     var showHomeBtn by mutableStateOf(true)
     var showTabsBtn by mutableStateOf(true)
     var showMenuBtn by mutableStateOf(true)
@@ -115,8 +116,11 @@ class BrowserState {
 
         engine.setNavigationListener(object : GeckoEngine.NavigationListener {
             override fun onLocationChanged(url: String) {
-                this@BrowserState.url = url
-                if (url.isNotEmpty() && url != "about:blank") {
+                // 过滤 about:blank，不显示在地址栏
+                if (url == "about:blank" || url.isEmpty()) {
+                    this@BrowserState.url = ""
+                } else {
+                    this@BrowserState.url = url
                     showHomePage = false
                 }
                 checkBookmarkStatus(url)
@@ -185,10 +189,11 @@ class BrowserState {
         applyDesktopMode()
     }
 
-    /** 应用桌面/隐私模式，applySettings 内部会重建会话+重载页面 */
+    /** 应用引擎设置（桌面模式/隐私/夜间），applySettings 内部会重建会话+重载页面 */
     fun applyDesktopMode() {
         currentEngine?.applySettings(
             EngineSettings(
+                nightMode = isNightMode,
                 desktopMode = isDesktopMode,
                 privateMode = isIncognito
             )

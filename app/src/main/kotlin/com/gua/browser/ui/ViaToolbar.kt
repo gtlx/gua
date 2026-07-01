@@ -12,14 +12,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,10 +37,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Via 风格工具栏 — 极简无阴影，镂空图标
+ * Via 风格工具栏
  *
  * 普通状态：◀ ▶ ↻ ☆ [可滚动 URL] □□ ⋮
- * 编辑状态：[B] [可滚动输入___________] [→]
+ * 编辑状态：[🔍] [可滚动输入___________] [→]
+ *
+ * 点击放大镜图标可切换搜索引擎。
  */
 @Composable
 fun ViaToolbar(
@@ -71,14 +74,16 @@ fun ViaToolbar(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Via 风格：纯白背景，无阴影
+    // 过滤 about:blank 和空 URL，不显示在地址栏
+    val displayUrl = if (urlText == "about:blank" || urlText.isBlank()) "" else urlText
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
     ) {
         if (isFocused) {
-            // ===== Via 编辑状态 =====
+            // ===== 编辑状态 =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -86,7 +91,7 @@ fun ViaToolbar(
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 搜索引擎缩写按钮
+                // 放大镜图标 — 点击切换搜索引擎
                 Box(
                     modifier = Modifier
                         .size(34.dp)
@@ -95,11 +100,11 @@ fun ViaToolbar(
                         .clickable(onClick = onSearchEngineSwitch),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = searchEngineLabel.take(2),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF333333)
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = "切换搜索引擎",
+                        tint = Color(0xFF666666),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -127,7 +132,7 @@ fun ViaToolbar(
                         ),
                         decorationBox = { innerTextField ->
                             Box {
-                                if (urlText.isEmpty()) {
+                                if (urlText.isEmpty() || urlText == "about:blank") {
                                     Text(
                                         "搜索或输入网址",
                                         fontSize = 15.sp,
@@ -153,7 +158,7 @@ fun ViaToolbar(
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        Icons.Outlined.ArrowForward,
+                        Icons.AutoMirrored.Outlined.ArrowForward,
                         contentDescription = "前往",
                         tint = Color(0xFF1565C0),
                         modifier = Modifier.size(22.dp)
@@ -161,7 +166,7 @@ fun ViaToolbar(
                 }
             }
         } else {
-            // ===== Via 普通状态：极简工具栏 =====
+            // ===== 普通状态 =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -170,19 +175,23 @@ fun ViaToolbar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 后退
-                ToolbarIcon(
-                    icon = Icons.Outlined.ArrowBack,
-                    contentDesc = "后退",
-                    enabled = canGoBack,
-                    onClick = onBack
-                )
+                if (showBack) {
+                    ToolbarIcon(
+                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDesc = "后退",
+                        enabled = canGoBack,
+                        onClick = onBack
+                    )
+                }
                 // 前进
-                ToolbarIcon(
-                    icon = Icons.Outlined.ArrowForward,
-                    contentDesc = "前进",
-                    enabled = canGoForward,
-                    onClick = onForward
-                )
+                if (showForward) {
+                    ToolbarIcon(
+                        icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDesc = "前进",
+                        enabled = canGoForward,
+                        onClick = onForward
+                    )
+                }
                 // 刷新/停止
                 if (isLoading) {
                     ToolbarIcon(
@@ -219,7 +228,7 @@ fun ViaToolbar(
                     )
                 }
 
-                // Via 风格 URL 胶囊 — 可水平滚动
+                // URL 胶囊
                 val urlScrollState = rememberScrollState()
                 Box(
                     modifier = Modifier
@@ -245,10 +254,10 @@ fun ViaToolbar(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (urlText.isNotEmpty()) urlText else "搜索或输入网址",
+                            text = if (displayUrl.isNotEmpty()) displayUrl else "搜索或输入网址",
                             fontSize = 13.sp,
                             maxLines = 1,
-                            color = if (urlText.isNotEmpty())
+                            color = if (displayUrl.isNotEmpty())
                                 Color(0xFF333333)
                             else
                                 Color(0xFFBBBBBB),

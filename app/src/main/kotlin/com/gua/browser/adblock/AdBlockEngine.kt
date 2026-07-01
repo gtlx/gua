@@ -32,11 +32,17 @@ class AdBlockEngine(private val context: Context) {
         val pattern: String,
         val type: RuleType,
         val isException: Boolean = false,
-        val regex: Regex? = null  // 预编译的正则
+        val regex: Regex? = null,   // 预编译的正则
+        val domainKey: String? = null  // 域名前缀索引 key
     )
 
     private val rules = mutableListOf<CompiledRule>()
+    /** 域名 → 规则索引，加速匹配 */
+    private val domainIndex = mutableMapOf<String, MutableList<CompiledRule>>()
     private var isReady = false
+
+    /** 内置规则总数（含域名索引分摊后的有效规则） */
+    val ruleCount: Int get() = rules.size
 
     /**
      * 初始化规则引擎，从 assets 加载规则
@@ -78,38 +84,47 @@ class AdBlockEngine(private val context: Context) {
             pattern = pattern.removePrefix("@@").trimStart()
         }
 
-        val (ruleType, precompiledRegex) = when {
+        val (ruleType, precompiledRegex, domainKey) = when {
             pattern.startsWith("||") && pattern.endsWith("^") -> {
                 val domain = pattern.removePrefix("||").removeSuffix("^")
-                Pair(RuleType.DOMAIN, null)
+                Triple(RuleType.DOMAIN, null, domain)
             }
             pattern.startsWith("|") && pattern.endsWith("|") -> {
                 val exact = pattern.removePrefix("|").removeSuffix("|")
-                Pair(RuleType.EXACT, null)
+                Triple(RuleType.EXACT, null, null)
             }
             pattern.startsWith("/") && pattern.endsWith("/") -> {
                 val regexStr = pattern.removePrefix("/").removeSuffix("/")
                 val regex = try { Regex(regexStr) } catch (_: Exception) { null }
-                Pair(RuleType.REGEX, regex)
+                Triple(RuleType.REGEX, regex, null)
             }
             pattern.contains("*") -> {
                 val regexStr = pattern
                     .replace(".", "\\.")
                     .replace("*", ".*")
                 val regex = try { Regex(regexStr) } catch (_: Exception) { null }
-                Pair(RuleType.URL_PATTERN, regex)
+                Triple(RuleType.URL_PATTERN, regex, null)
             }
             else -> {
-                Pair(RuleType.PREFIX, null)
+                // 从 pattern 中提取域名前缀作为索引 key
+                val key = pattern.substringBefore("/").substringBefore(":")
+                Triple(RuleType.PREFIX, null, key.ifBlank { null })
             }
         }
 
-        rules.add(CompiledRule(
+        val compiled = CompiledRule(
             pattern = pattern,
             type = ruleType,
             isException = isException,
-            regex = precompiledRegex
-        ))
+            regex = precompiledRegex,
+            domainKey = domainKey
+        )
+        rules.add(compiled)
+
+        // 建立域名索引
+        if (domainKey != null) {
+            domainIndex.getOrPut(domainKey) { mutableListOf() }.add(compiled)
+        }
     }
 
     /**
@@ -121,7 +136,32 @@ class AdBlockEngine(private val context: Context) {
 
         var blocked = false
 
-        for (rule in rules) {
+        // 从 URL 提取域名作为索引 key
+        val domainKey = try {
+            val host = java.net.URI(url).host ?: ""
+            host.removePrefix("www.")
+        } catch (_: Exception) { "" }
+
+        // 先查域名索引（快速路径）
+        val candidateRules = mutableSetOf<CompiledRule>()
+        if (domainKey.isNotEmpty()) {
+            domainIndex[domainKey]?.let { candidateRules.addAll(it) }
+            // 也查父域名
+            val parts = domainKey.split(".")
+            if (parts.size > 2) {
+                val parent = parts.takeLast(2).joinToString(".")
+                domainIndex[parent]?.let { candidateRules.addAll(it) }
+            }
+        }
+
+        // 遍历候选规则 + 非域名索引规则
+        val toCheck = if (domainKey.isNotEmpty()) {
+            candidateRules + rules.filter { it.domainKey == null && it.type != RuleType.DOMAIN }
+        } else {
+            rules
+        }
+
+        for (rule in toCheck) {
             val matches = when (rule.type) {
                 RuleType.DOMAIN -> url.contains(rule.pattern)
                 RuleType.EXACT -> url == rule.pattern
@@ -132,7 +172,6 @@ class AdBlockEngine(private val context: Context) {
 
             if (matches) {
                 if (rule.isException) {
-                    // 白名单优先返回
                     return false
                 }
                 blocked = true

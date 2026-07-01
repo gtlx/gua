@@ -146,7 +146,7 @@ private fun MainSettingsScreen(
                 SettingsSwitchItem(
                     icon = Icons.Outlined.Shield,
                     title = "广告过滤",
-                    subtitle = "拦截广告和跟踪器",
+                    subtitle = "拦截广告和跟踪器" + if (state.isAdblockEnabled) " · 内置 ${com.gua.browser.GuaApp.instance.adBlockEngine.ruleCount} 条规则" else "",
                     checked = state.isAdblockEnabled,
                     onCheckedChange = { state.isAdblockEnabled = it }
                 )
@@ -257,6 +257,8 @@ fun ToolbarSettingsScreen(
     state: BrowserState,
     onDismiss: () -> Unit
 ) {
+    var showPosDialog by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -286,10 +288,7 @@ fun ToolbarSettingsScreen(
                     icon = Icons.Outlined.SwapVert,
                     title = "工具栏位置",
                     subtitle = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) "顶部" else "底部",
-                    onClick = {
-                        state.toolbarPosition = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP)
-                            BrowserState.ToolbarPos.BOTTOM else BrowserState.ToolbarPos.TOP
-                    }
+                    onClick = { showPosDialog = true }
                 )
             }
             item {
@@ -344,6 +343,57 @@ fun ToolbarSettingsScreen(
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
+        }
+
+        // 工具栏位置选择弹窗
+        if (showPosDialog) {
+            AlertDialog(
+                onDismissRequest = { showPosDialog = false },
+                title = { Text("工具栏位置") },
+                text = {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    state.toolbarPosition = BrowserState.ToolbarPos.TOP
+                                    showPosDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("顶部", fontSize = 16.sp,
+                                color = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP)
+                                    Color(0xFF1565C0) else Color(0xFF333333))
+                            if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("✓", color = Color(0xFF1565C0), fontSize = 14.sp)
+                            }
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    state.toolbarPosition = BrowserState.ToolbarPos.BOTTOM
+                                    showPosDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("底部", fontSize = 16.sp,
+                                color = if (state.toolbarPosition == BrowserState.ToolbarPos.BOTTOM)
+                                    Color(0xFF1565C0) else Color(0xFF333333))
+                            if (state.toolbarPosition == BrowserState.ToolbarPos.BOTTOM) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("✓", color = Color(0xFF1565C0), fontSize = 14.sp)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showPosDialog = false }) { Text("取消") }
+                }
+            )
         }
     }
 }
