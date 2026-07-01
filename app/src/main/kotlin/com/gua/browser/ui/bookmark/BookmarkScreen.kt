@@ -5,15 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,11 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 书签管理界面
- *
- * Via 风格列表展示所有书签：
- * - 点击打开
- * - 长按编辑/删除
+ * Via 风格书签管理界面 — 扁平列表，无卡片投影
  */
 @Composable
 fun BookmarkScreen(
@@ -44,55 +41,54 @@ fun BookmarkScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<Bookmark?>(null) }
 
-    // 加载书签
     LaunchedEffect(Unit) {
-        bookmarks = withContext(Dispatchers.IO) {
-            app.bookmarkManager.getAll()
-        }
+        bookmarks = withContext(Dispatchers.IO) { app.bookmarkManager.getAll() }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFFF5F5F5))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // 顶部栏
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface
+            // Via 风格顶部栏
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "书签 (${bookmarks.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF333333)
                     )
                     Row {
-                        FilledTonalButton(
+                        TextButton(
                             onClick = { showAddDialog = true },
-                            modifier = Modifier.height(36.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Text("+ 添加", fontSize = 13.sp)
+                            Text("+ 添加", fontSize = 13.sp, color = Color(0xFF1565C0))
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        TextButton(onClick = onDismiss) {
-                            Text("完成")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        TextButton(
+                            onClick = onDismiss,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0))
                         }
                     }
                 }
             }
 
             if (bookmarks.isEmpty()) {
-                // 空状态
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -100,25 +96,24 @@ fun BookmarkScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "暂无书签",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            fontSize = 15.sp,
+                            color = Color(0xFF999999)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "在页面中点击地址栏右侧 ☆ 添加书签",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            fontSize = 12.sp,
+                            color = Color(0xFFCCCCCC)
                         )
                     }
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
                     items(bookmarks, key = { it.id }) { bookmark ->
-                        BookmarkCard(
+                        BookmarkRow(
                             bookmark = bookmark,
                             onClick = {
                                 onOpenUrl(bookmark.url)
@@ -131,16 +126,13 @@ fun BookmarkScreen(
             }
         }
 
-        // 添加书签弹窗
         if (showAddDialog) {
             AddBookmarkDialog(
                 currentUrl = state.url,
                 currentTitle = state.pageTitle,
                 onAdd = { title, url ->
                     scope.launch(Dispatchers.IO) {
-                        app.bookmarkManager.add(
-                            Bookmark(title = title, url = url)
-                        )
+                        app.bookmarkManager.add(Bookmark(title = title, url = url))
                         bookmarks = app.bookmarkManager.getAll()
                     }
                     showAddDialog = false
@@ -149,7 +141,6 @@ fun BookmarkScreen(
             )
         }
 
-        // 删除确认
         deleteTarget?.let { bookmark ->
             AlertDialog(
                 onDismissRequest = { deleteTarget = null },
@@ -163,7 +154,7 @@ fun BookmarkScreen(
                         }
                         deleteTarget = null
                     }) {
-                        Text("删除", color = MaterialTheme.colorScheme.error)
+                        Text("删除", color = Color(0xFFE53935))
                     }
                 },
                 dismissButton = {
@@ -177,78 +168,78 @@ fun BookmarkScreen(
 }
 
 /**
- * 书签卡片
+ * Via 风格书签行 — 无卡片，无投影
  */
 @Composable
-fun BookmarkCard(
+fun BookmarkRow(
     bookmark: Bookmark,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
+            .background(Color.White)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // 首字母圆形图标
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF0F0F0)),
+            contentAlignment = Alignment.Center
         ) {
-            // 图标
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = bookmark.title.take(1).uppercase(),
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            Text(
+                text = bookmark.title.firstOrNull()?.uppercase() ?: "W",
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = Color(0xFF666666)
+            )
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = bookmark.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = bookmark.url,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = bookmark.title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color(0xFF333333),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = bookmark.url,
+                fontSize = 12.sp,
+                color = Color(0xFF999999),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Close,
+                contentDescription = "删除",
+                tint = Color(0xFFCCCCCC),
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(Color(0xFFEEEEEE))
+    )
 }
 
-/**
- * 添加书签弹窗
- */
 @Composable
 fun AddBookmarkDialog(
     currentUrl: String,

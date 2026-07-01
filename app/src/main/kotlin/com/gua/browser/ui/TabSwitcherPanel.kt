@@ -1,10 +1,8 @@
 package com.gua.browser.ui
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,17 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gua.browser.engine.EngineManager
 
 /**
- * 标签切换面板 — Via 风格卡片视图
- *
- * 以横向可滚动卡片列表展示所有打开的标签页。
- * 点击切换，上滑/点击 × 关闭。
+ * Via 风格标签切换面板 — 扁平卡片，无投影
  */
 @Composable
 fun TabSwitcherPanel(
@@ -39,46 +33,45 @@ fun TabSwitcherPanel(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-
+            .background(Color(0xFFF5F5F5))
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // 顶部栏
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Via 风格顶部栏
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "标签页 (${tabs.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF333333)
                     )
                     Row {
-                        FilledTonalButton(
+                        TextButton(
                             onClick = onNewTab,
-                            modifier = Modifier.height(36.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Text("+ 新建", fontSize = 13.sp)
+                            Text("+ 新建", fontSize = 13.sp, color = Color(0xFF1565C0))
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        TextButton(onClick = onDismiss) {
-                            Text("完成")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        TextButton(
+                            onClick = onDismiss,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0))
                         }
                     }
                 }
             }
 
-            // 标签卡片列表（水平）
             if (tabs.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -86,7 +79,8 @@ fun TabSwitcherPanel(
                 ) {
                     Text(
                         text = "没有打开的标签页",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        color = Color(0xFF999999),
+                        fontSize = 15.sp
                     )
                 }
             } else {
@@ -102,14 +96,10 @@ fun TabSwitcherPanel(
                             isActive = index == activeIndex,
                             onClick = { onSwitchTab(index) },
                             onClose = { onCloseTab(index) },
-                            modifier = Modifier.width(240.dp)
+                            modifier = Modifier.width(220.dp)
                         )
                     }
-
-                    // 新建标签卡片
-                    item {
-                        NewTabCard(onClick = onNewTab)
-                    }
+                    item { NewTabCard(onClick = onNewTab) }
                 }
             }
         }
@@ -117,7 +107,7 @@ fun TabSwitcherPanel(
 }
 
 /**
- * 单个标签卡片
+ * Via 风格标签卡片 — 纯白背景，无投影，选中时有蓝边
  */
 @Composable
 fun TabCard(
@@ -127,74 +117,73 @@ fun TabCard(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (isActive)
-        MaterialTheme.colorScheme.primary
-    else
-        Color.Transparent
-
-    Card(
+    Box(
         modifier = modifier
-            .fillMaxHeight(0.7f)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = CardDefaults.outlinedCardBorder().copy(
-            width = if (isActive) 2.dp else 0.dp
-        )
+            .fillMaxHeight(0.65f)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isActive) Color.White else Color(0xFFEEEEEE))
+            .clickable(onClick = onClick)
+            .then(
+                if (isActive) Modifier.padding(1.5.dp) else Modifier
+            ),
+        contentAlignment = Alignment.BottomStart
     ) {
+        // 选中高亮边框（用叠加层模拟）
+        if (isActive) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Color(0xFF1565C0).copy(alpha = 0.08f))
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(12.dp)
         ) {
-            // 顶部：关闭按钮
+            // 关闭按钮（右上）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                Surface(
+                Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(22.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(Color.Black.copy(alpha = 0.06f))
                         .clickable(onClick = onClose),
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "✕",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
+                    Text(
+                        text = "✕",
+                        fontSize = 11.sp,
+                        color = Color(0xFF888888)
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // 页面标题
+            // 标题
             Text(
                 text = tab.title.ifEmpty { "新标签" },
-                style = MaterialTheme.typography.titleSmall,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
+                color = if (isActive) Color(0xFF333333) else Color(0xFF666666),
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
+                overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(3.dp))
 
-            // 页面 URL
+            // URL
             Text(
                 text = tab.url.ifEmpty { "about:blank" },
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = 11.sp,
+                color = if (isActive) Color(0xFF999999) else Color(0xFFBBBBBB),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -205,33 +194,28 @@ fun TabCard(
  */
 @Composable
 fun NewTabCard(onClick: () -> Unit) {
-    Card(
+    Box(
         modifier = Modifier
-            .width(200.dp)
-            .fillMaxHeight(0.7f)
+            .width(180.dp)
+            .fillMaxHeight(0.65f)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF0F0F0))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "+",
-                    fontSize = 36.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Light
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "新建标签",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "+",
+                fontSize = 32.sp,
+                color = Color(0xFF1565C0),
+                fontWeight = FontWeight.Light
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = "新建标签",
+                fontSize = 12.sp,
+                color = Color(0xFF888888)
+            )
         }
     }
 }

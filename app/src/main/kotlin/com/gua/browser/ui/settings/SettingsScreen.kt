@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -25,9 +27,7 @@ import com.gua.browser.ui.BrowserState
 import kotlinx.coroutines.launch
 
 /**
- * 设置主界面 — Via 风格
- *
- * 所有图标已统一为 Material Icons。
+ * Via 风格设置界面 — 桌面无阴影，镂空图标
  */
 @Composable
 fun SettingsScreen(
@@ -40,7 +40,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFFF5F5F5))
     ) {
         if (showSearchEngines.value) {
             SearchEngineSettings(
@@ -58,62 +58,64 @@ fun SettingsScreen(
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
 
-                // 顶部栏
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 2.dp,
-                    color = MaterialTheme.colorScheme.surface
+                // Via 风格顶部栏：纯白，无阴影，精简
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "设置",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF333333)
                         )
-                        TextButton(onClick = onDismiss) {
-                            Text("完成")
+                        TextButton(
+                            onClick = onDismiss,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0))
                         }
                     }
                 }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    // ===== 搜索 =====
-                    item { SectionHeader("搜索") }
+                    // 搜索
+                    item { SectionTitle("搜索") }
                     item {
-                        SettingsCard(
-                            icon = Icons.Default.Search,
+                        SettingsItem(
+                            icon = Icons.Outlined.Language,
                             title = "搜索引擎",
                             subtitle = state.activeSearchEngine.name,
                             onClick = { showSearchEngines.value = true }
                         )
                     }
 
-                    // ===== 外观 =====
-                    item { SectionHeader("外观") }
+                    // 外观
+                    item { SectionTitle("外观") }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.DarkMode,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.DarkMode,
                             title = "夜间模式",
                             checked = state.isNightMode,
                             onCheckedChange = { state.isNightMode = it }
                         )
                     }
 
-                    // ===== 隐私 =====
-                    item { SectionHeader("隐私与安全") }
+                    // 隐私
+                    item { SectionTitle("隐私与安全") }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.Shield,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.Shield,
                             title = "广告过滤",
                             subtitle = "拦截广告和跟踪器",
                             checked = state.isAdblockEnabled,
@@ -121,11 +123,11 @@ fun SettingsScreen(
                         )
                     }
 
-                    // ===== 浏览 =====
-                    item { SectionHeader("浏览") }
+                    // 浏览
+                    item { SectionTitle("浏览") }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.DesktopWindows,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.DesktopWindows,
                             title = "桌面版网站",
                             subtitle = "默认以桌面模式加载页面",
                             checked = state.isDesktopMode,
@@ -133,11 +135,11 @@ fun SettingsScreen(
                         )
                     }
 
-                    // ===== 工具栏 =====
-                    item { SectionHeader("工具栏") }
+                    // 工具栏
+                    item { SectionTitle("工具栏") }
                     item {
-                        SettingsCard(
-                            icon = Icons.Default.SwapVert,
+                        SettingsItem(
+                            icon = Icons.Outlined.SwapVert,
                             title = "工具栏位置",
                             subtitle = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) "顶部" else "底部",
                             onClick = {
@@ -147,56 +149,56 @@ fun SettingsScreen(
                         )
                     }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.Edit,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.Edit,
                             title = "显示地址栏",
                             checked = state.showUrlBar,
                             onCheckedChange = { state.showUrlBar = it }
                         )
                     }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.ArrowBack,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.ArrowBack,
                             title = "后退按钮",
                             checked = state.showBackBtn,
                             onCheckedChange = { state.showBackBtn = it }
                         )
                     }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.ArrowForward,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.ArrowForward,
                             title = "前进按钮",
                             checked = state.showForwardBtn,
                             onCheckedChange = { state.showForwardBtn = it }
                         )
                     }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.Home,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.Home,
                             title = "主页按钮",
                             checked = state.showHomeBtn,
                             onCheckedChange = { state.showHomeBtn = it }
                         )
                     }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.Layers,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.Layers,
                             title = "标签按钮",
                             checked = state.showTabsBtn,
                             onCheckedChange = { state.showTabsBtn = it }
                         )
                     }
                     item {
-                        SettingsSwitchCard(
-                            icon = Icons.Default.MoreHoriz,
+                        SettingsSwitchItem(
+                            icon = Icons.Outlined.MoreHoriz,
                             title = "菜单按钮",
                             checked = state.showMenuBtn,
                             onCheckedChange = { state.showMenuBtn = it }
                         )
                     }
 
-                    // ===== 数据 =====
-                    item { SectionHeader("数据") }
+                    // 数据
+                    item { SectionTitle("数据") }
                     item {
                         val exportScope = rememberCoroutineScope()
                         val exportLauncher = rememberLauncherForActivityResult(
@@ -209,8 +211,8 @@ fun SettingsScreen(
                                 }
                             }
                         }
-                        SettingsCard(
-                            icon = Icons.Default.Upload,
+                        SettingsItem(
+                            icon = Icons.Outlined.FileUpload,
                             title = "导出数据",
                             subtitle = "书签、设置、搜索引擎",
                             onClick = { exportLauncher.launch("gua_backup.json") }
@@ -228,22 +230,21 @@ fun SettingsScreen(
                                 }
                             }
                         }
-                        SettingsCard(
-                            icon = Icons.Default.Download,
+                        SettingsItem(
+                            icon = Icons.Outlined.Download,
                             title = "导入数据",
                             subtitle = "恢复书签和设置",
                             onClick = { importLauncher.launch(arrayOf("application/json")) }
                         )
                     }
 
-                    // ===== 关于 =====
-                    item { SectionHeader("关于") }
+                    // 关于
+                    item { SectionTitle("关于") }
                     item {
-                        SettingsCard(
-                            icon = Icons.Default.Info,
+                        SettingsItem(
+                            icon = Icons.Outlined.Info,
                             title = "关于 GuaBrowser",
-                            subtitle = "v0.1.0 · 基于 GeckoView",
-                            onClick = { }
+                            subtitle = "v0.1.0 · 基于 GeckoView"
                         )
                     }
 
@@ -255,121 +256,129 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SectionHeader(title: String) {
+fun SectionTitle(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleSmall,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp)
+        color = Color(0xFF999999),
+        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp)
     )
 }
 
 /**
- * 设置项卡片（点击进入下一级）
+ * Via 风格设置项 — 无卡片，无阴影，纯文本行
  */
 @Composable
-fun SettingsCard(
+fun SettingsItem(
     icon: ImageVector,
     title: String,
     subtitle: String = "",
-    onClick: () -> Unit
+    onClick: (() -> Unit)? = null
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
+            .background(Color.White)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier.size(22.dp)
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = Color(0xFF666666),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                color = Color(0xFF333333)
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            if (subtitle.isNotEmpty()) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = Color(0xFF999999),
+                    modifier = Modifier.padding(top = 2.dp)
                 )
-                if (subtitle.isNotEmpty()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                }
             }
+        }
+        if (onClick != null) {
             Icon(
-                Icons.Default.ChevronRight,
+                Icons.Outlined.ChevronRight,
                 contentDescription = "进入",
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                tint = Color(0xFFCCCCCC),
                 modifier = Modifier.size(18.dp)
             )
         }
     }
+    // Via 风格：分割线
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(Color(0xFFEEEEEE))
+    )
 }
 
 /**
- * 设置项卡片（开关）
+ * Via 风格设置项（开关）— 无卡片，无阴影
  */
 @Composable
-fun SettingsSwitchCard(
+fun SettingsSwitchItem(
     icon: ImageVector,
     title: String,
     subtitle: String = "",
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier.size(22.dp)
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = Color(0xFF666666),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                color = Color(0xFF333333)
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            if (subtitle.isNotEmpty()) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = Color(0xFF999999),
+                    modifier = Modifier.padding(top = 2.dp)
                 )
-                if (subtitle.isNotEmpty()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                }
             }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
-            )
         }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = Color(0xFF1565C0),
+                checkedThumbColor = Color.White,
+                uncheckedTrackColor = Color(0xFFDDDDDD),
+                uncheckedThumbColor = Color.White
+            )
+        )
     }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(Color(0xFFEEEEEE))
+    )
 }

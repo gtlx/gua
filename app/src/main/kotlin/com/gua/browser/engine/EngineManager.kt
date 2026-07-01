@@ -1,7 +1,6 @@
 package com.gua.browser.engine
 
 import android.view.ViewGroup
-import androidx.lifecycle.LifecycleOwner
 import org.mozilla.geckoview.GeckoView
 import java.util.UUID
 
@@ -12,8 +11,7 @@ import java.util.UUID
  * 提供标签创建、切换、关闭等操作。
  */
 class EngineManager(
-    private val container: ViewGroup,
-    private val lifecycleOwner: LifecycleOwner
+    private val container: ViewGroup
 ) {
 
     data class Tab(
@@ -58,7 +56,7 @@ class EngineManager(
                 )
             }
 
-            val engine = GeckoEngine(geckoView, lifecycleOwner)
+            val engine = GeckoEngine(geckoView)
             val tab = Tab(
                 engine = engine,
                 geckoView = geckoView

@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.view.ViewGroup
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.gua.browser.bookmark.Bookmark
 import com.gua.browser.engine.EngineManager
 import com.gua.browser.ui.BrowserState
@@ -71,23 +70,26 @@ fun GuaBrowserTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    // Via 风格极简配色：纯白背景，深灰文字，蓝色强调
     val colorScheme = if (darkTheme) {
-        darkColorScheme(
+        lightColorScheme(
             primary = Color(0xFF90CAF9),
             onPrimary = Color(0xFF1A1A1A),
             surface = Color(0xFF2D2D2D),
             onSurface = Color(0xFFE0E0E0),
             background = Color(0xFF1E1E1E),
-            onBackground = Color(0xFFE0E0E0)
+            onBackground = Color(0xFFE0E0E0),
+            surfaceVariant = Color(0xFF3D3D3D)
         )
     } else {
         lightColorScheme(
             primary = Color(0xFF1565C0),
             onPrimary = Color.White,
             surface = Color.White,
-            onSurface = Color(0xFF1C1B1F),
-            background = Color.White,
-            onBackground = Color(0xFF1C1B1F)
+            onSurface = Color(0xFF333333),
+            background = Color(0xFFF5F5F5),
+            onBackground = Color(0xFF333333),
+            surfaceVariant = Color(0xFFF5F5F5)
         )
     }
     MaterialTheme(colorScheme = colorScheme, content = content)
@@ -110,17 +112,23 @@ fun BrowserContent() {
         stateSaver.load(state)
     }
 
-    // 状态变化自动保存（防抖）
+    // 状态变化自动保存（防抖）— 拆分为两组，减少不必要的触发
+    LaunchedEffect(Unit) {
+        snapshotFlow { listOf(state.isNightMode, state.isAdblockEnabled, state.isDesktopMode) }
+            .collect { stateSaver.save(state) }
+    }
     LaunchedEffect(Unit) {
         snapshotFlow {
             listOf(
-                state.isNightMode, state.isAdblockEnabled, state.isDesktopMode,
                 state.toolbarPosition, state.showUrlBar,
                 state.showBackBtn, state.showForwardBtn, state.showHomeBtn,
-                state.showTabsBtn, state.showMenuBtn,
-                state.activeSearchEngineIndex, state.searchEngines.toList()
+                state.showTabsBtn, state.showMenuBtn
             )
         }.collect { stateSaver.save(state) }
+    }
+    LaunchedEffect(Unit) {
+        snapshotFlow { state.activeSearchEngineIndex to state.searchEngines.toList() }
+            .collect { stateSaver.save(state) }
     }
 
     // 桌面模式变化时实时应用到引擎
@@ -167,41 +175,41 @@ fun BrowserContent() {
                         BuildToolbar(state, engineManager)
                     }
 
-                    // Web 内容区
+                    // Web 内容区 — 引擎始终存在，StartPage 作为覆盖层
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
                     ) {
-                        // 如果是主页，显示 StartPage 覆盖层
+                        // 引擎视图始终创建（确保 engineManager 不为 null）
+                        AndroidView(
+                            factory = { ctx ->
+                                FrameLayout(ctx).apply {
+                                    layoutParams = ViewGroup.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT
+                                    )
+                                    val mgr = EngineManager(this)
+                                    engineManager = mgr
+                                    val tab = mgr.createTab("about:blank")
+                                    if (tab != null) {
+                                        state.bindEngine(tab.engine)
+                                        state.updateTabList(mgr)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // StartPage 覆盖层（只在主页且未加载时显示）
                         if (state.isHomePage && !state.isUrlFocused && !state.isLoading) {
                             StartPage(
                                 state = state,
                                 onOpenUrl = { url ->
+                                    state.showHomePage = false
                                     engineManager?.activeTab?.engine?.loadUrl(url)
                                 },
                                 onFocusSearch = { state.isUrlFocused = true }
-                            )
-                        } else {
-                            // 引擎视图
-                            val lifecycleOwner = LocalLifecycleOwner.current
-                            AndroidView(
-                                factory = { ctx ->
-                                    FrameLayout(ctx).apply {
-                                        layoutParams = ViewGroup.LayoutParams(
-                                            ViewGroup.LayoutParams.MATCH_PARENT,
-                                            ViewGroup.LayoutParams.MATCH_PARENT
-                                        )
-                                        val mgr = EngineManager(this, lifecycleOwner)
-                                        engineManager = mgr
-                                        val tab = mgr.createTab("about:blank")
-                                        if (tab != null) {
-                                            state.bindEngine(tab.engine)
-                                            state.updateTabList(mgr)
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize()
                             )
                         }
 
@@ -293,7 +301,10 @@ fun BrowserContent() {
                     activeIndex = state.activeTabIndex,
                     onSwitchTab = { index ->
                         engineManager?.switchToTab(index)
-                        engineManager?.activeTab?.let { state.bindEngine(it.engine) }
+                        engineManager?.activeTab?.let {
+                            state.bindEngine(it.engine)
+                            state.showHomePage = false
+                        }
                         state.updateTabList(engineManager!!)
                         state.showTabSwitcher = false
                     },
@@ -303,6 +314,7 @@ fun BrowserContent() {
                         engineManager?.activeTab?.let { state.bindEngine(it.engine) }
                     },
                     onNewTab = {
+                        state.showHomePage = true
                         engineManager?.createBlankTab()
                         state.updateTabList(engineManager!!)
                         engineManager?.activeTab?.let { state.bindEngine(it.engine) }
@@ -324,6 +336,7 @@ fun BrowserContent() {
                 BookmarkScreen(
                     state = state,
                     onOpenUrl = { url ->
+                        state.showHomePage = false
                         engineManager?.activeTab?.engine?.loadUrl(url)
                         state.showBookmarks = false
                     },
@@ -335,6 +348,7 @@ fun BrowserContent() {
             if (state.showHistory) {
                 HistoryScreen(
                     onOpenUrl = { url ->
+                        state.showHomePage = false
                         engineManager?.activeTab?.engine?.loadUrl(url)
                         state.showHistory = false
                     },
@@ -349,10 +363,20 @@ fun BrowserContent() {
                     query = state.findQuery,
                     matchCount = state.findMatchCount,
                     currentIndex = state.findCurrentIndex,
-                    onQueryChange = { state.findQuery = it },
-                    onNext = { /* GeckoView 查找下一个 */ },
-                    onPrevious = { /* GeckoView 查找上一个 */ },
-                    onClose = { state.showFindInPage = false }
+                    onQueryChange = { query ->
+                        state.findQuery = query
+                        engineManager?.activeTab?.engine?.findInPage(query)
+                    },
+                    onNext = {
+                        engineManager?.activeTab?.engine?.findInPage(state.findQuery, forward = true)
+                    },
+                    onPrevious = {
+                        engineManager?.activeTab?.engine?.findInPage(state.findQuery, forward = false)
+                    },
+                    onClose = {
+                        state.showFindInPage = false
+                        engineManager?.activeTab?.engine?.clearFindInPage()
+                    }
                 )
             }
 
@@ -396,31 +420,33 @@ private fun BuildToolbar(
         onSearchEngineSwitch = { state.switchSearchEngine() },
         onGo = { input ->
             state.isUrlFocused = false
-            engineManager?.activeTab?.engine
-                ?.loadUrl(normalizeUrl(input, state.activeSearchEngine))
-            state.url = input
+            val resolvedUrl = normalizeUrl(input, state.activeSearchEngine)
+            state.showHomePage = false
+            engineManager?.activeTab?.engine?.loadUrl(resolvedUrl)
+            state.url = resolvedUrl
         },
         onBack = { engineManager?.activeTab?.engine?.goBack() },
         onForward = { engineManager?.activeTab?.engine?.goForward() },
         onRefresh = { engineManager?.activeTab?.engine?.reload() },
         onStop = { engineManager?.activeTab?.engine?.stopLoading() },
         onHome = {
-            engineManager?.activeTab?.engine?.loadUrl("about:start")
+            state.showHomePage = true
+            state.url = "about:blank"
+            engineManager?.activeTab?.engine?.loadUrl("about:blank")
         },
         onBookmark = {
             val app = com.gua.browser.GuaApp.instance
             val url = state.url
             val title = state.pageTitle
             if (url.isNotBlank() && !url.startsWith("about:")) {
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                // 使用 App 全局协程作用域，避免泄漏
+                app.appScope.launch {
                     if (app.bookmarkManager.exists(url)) {
-                        // 已收藏 → 删除
                         val all = app.bookmarkManager.getAll()
                         val bm = all.find { it.url == url }
                         if (bm != null) app.bookmarkManager.delete(bm.id)
                         state.isBookmarked = false
                     } else {
-                        // 未收藏 → 添加
                         app.bookmarkManager.add(
                             Bookmark(title = title.ifEmpty { url }, url = url)
                         )

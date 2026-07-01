@@ -3,10 +3,10 @@ package com.gua.browser.userscript.gmapi
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.Build
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.gua.browser.GuaApp
 import com.gua.browser.core.network.HttpClient
 import com.gua.browser.core.storage.KVStorage
 import kotlinx.coroutines.*
@@ -94,7 +94,8 @@ class GMApiBridge(private val context: Context) {
      * @param callbackId 回调 ID，用于返回结果
      */
     fun xmlHttpRequest(jsonArgs: String, callbackId: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        // 使用 App 全局协程作用域，避免每次调用泄漏协程
+        GuaApp.instance.appScope.launch {
             try {
                 val args = JSONObject(jsonArgs)
                 val request = HttpClient.Request(

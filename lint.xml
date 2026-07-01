@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- 禁用推荐尺寸图标警告（使用 emoji 替代） -->
+    <issue id="IconExpectedSize" severity="ignore" />
+    <issue id="IconMissingDensityFolder" severity="ignore" />
+
+    <!-- 允许使用硬编码文本（已有 strings.xml 但 Compose 中使用字符串直接） -->
+    <issue id="HardcodedText" severity="ignore" />
+
+    <!-- 在 ProGuard 阶段处理过的问题 -->
+    <issue id="MissingRegistered" severity="error" />
+
+    <!-- 以下问题只在发布构建检查 -->
+    <issue id="ContentDescription" severity="warning" />
+    <issue id="RtlEnabled" severity="error" />
+    <issue id="RtlSymmetry" severity="warning" />
+    <issue id="UnusedResources" severity="error" />
+    <issue id="UnusedIds" severity="warning" />
+    <issue id="WrongConstant" severity="error" />
+    <issue id="NewApi" severity="error" />
+    <issue id="ObsoleteSdkInt" severity="warning" />
+    <issue id="DefaultLocale" severity="error" />
+    <issue id="SetTextI18n" severity="warning" />
+
+    <!-- 性能 -->
+    <issue id="DrawAllocation" severity="warning" />
+    <issue id="ObsoleteLayoutParam" severity="error" />
+    <issue id="StaticFieldLeak" severity="error" />
+    <issue id="Recycle" severity="error" />
+</lint>

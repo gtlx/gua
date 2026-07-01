@@ -32,12 +32,15 @@ private val items = listOf(
     QuickItem("scripts", "脚本", "📜"),
     QuickItem("bookmarks", "书签", "🔖"),
     QuickItem("history", "历史", "📋"),
-    QuickItem("add_to_home", "桌面快捷", "🏠"),
+    QuickItem("add_to_home", "快捷", "🏠"),
     QuickItem("share", "分享", "📤"),
     QuickItem("find", "查找", "🔍"),
     QuickItem("settings", "设置", "⚙️"),
 )
 
+/**
+ * Via 风格快捷面板 — 纯白浮层，无阴影，半透明背景
+ */
 @Composable
 fun QuickSettingsPanel(
     visible: Boolean,
@@ -64,35 +67,36 @@ fun QuickSettingsPanel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
+                .background(Color.Black.copy(alpha = 0.3f))
                 .clickable(onClick = onDismiss)
         ) {
-            Surface(
+            // Via 风格：纯白浮层面板，无阴影
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
+                    .background(
+                        Color.White,
+                        RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)
+                    )
                     .clickable(enabled = false, onClick = {}),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                shadowElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // 拖拽条
                     Box(
                         modifier = Modifier
-                            .width(40.dp).height(4.dp)
+                            .width(36.dp)
+                            .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            .background(Color(0xFFDDDDDD))
                             .align(Alignment.CenterHorizontally)
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("快捷工具", style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(4),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(items) { item ->
                             val active = when (item.id) {
@@ -101,15 +105,13 @@ fun QuickSettingsPanel(
                                 "desktop" -> isDesktopMode
                                 else -> false
                             }
-                            val bg = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            val fg = if (active) MaterialTheme.colorScheme.primary
-                                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            val bg = if (active) Color(0xFF1565C0).copy(alpha = 0.1f)
+                                     else Color(0xFFF5F5F5)
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(bg)
                                     .clickable {
                                         when (item.id) {
@@ -125,12 +127,17 @@ fun QuickSettingsPanel(
                                             "settings" -> onSettings()
                                         }
                                     }
-                                    .padding(12.dp)
+                                    .padding(10.dp)
                             ) {
                                 Text(text = item.emoji, fontSize = 22.sp)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(item.label, fontSize = 10.sp,
-                                    textAlign = TextAlign.Center, color = fg, maxLines = 1)
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    item.label,
+                                    fontSize = 10.sp,
+                                    textAlign = TextAlign.Center,
+                                    color = if (active) Color(0xFF1565C0) else Color(0xFF888888),
+                                    maxLines = 1
+                                )
                             }
                         }
                     }

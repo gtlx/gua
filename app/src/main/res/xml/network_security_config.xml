@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  允许明文流量访问本地开发服务器和所有网站
-  用户可在设置中进一步限制
+  网络安全配置
+  - 默认禁止明文流量
+  - 仅允许本地开发服务器（10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, localhost）
+    的明文 HTTP 流量
+  - 用户可在设置中添加例外（开发用）
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+
+    <!-- 允许内网 HTTP（开发调试用） -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+        <domain includeSubdomains="true">172.16.0.0</domain>
+        <domain includeSubdomains="true">192.168.0.0</domain>
+    </domain-config>
 </network-security-config>

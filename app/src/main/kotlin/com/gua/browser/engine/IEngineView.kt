@@ -41,6 +41,10 @@ interface IEngineView {
     // ===== 页面截图 =====
     fun captureBitmap(callback: (Bitmap?) -> Unit)
 
+    // ===== 页面查找 =====
+    fun findInPage(query: String, forward: Boolean = true)
+    fun clearFindInPage()
+
     // ===== 生命周期 =====
     fun onResume()
     fun onPause()

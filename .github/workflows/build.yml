@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev", "debug/**" ]
   workflow_dispatch:
 
 jobs:
@@ -24,24 +24,15 @@ jobs:
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-      - name: Download wrapper
-        run: |
-          curl -sL https://github.com/gradle/gradle/raw/v8.9.0/gradle/wrapper/gradle-wrapper.jar \
-            -o gradle/wrapper/gradle-wrapper.jar
-          chmod +x gradlew
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build APK
-        run: |
-          ./gradlew assembleDebug --no-daemon
-          echo "=== Build output ==="
-          find app/build -name '*.apk' 2>/dev/null || echo 'no apk files'
-          ls -la app/build/outputs/ 2>/dev/null || echo 'no outputs dir'
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: GuaBrowser-debug
           path: app/build/outputs/apk/debug/*.apk
+          retention-days: 7

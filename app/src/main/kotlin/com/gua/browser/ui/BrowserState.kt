@@ -7,8 +7,6 @@ import androidx.compose.runtime.setValue
 import com.gua.browser.engine.EngineManager
 import com.gua.browser.engine.EngineSettings
 import com.gua.browser.engine.GeckoEngine
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.mozilla.geckoview.GeckoSession
 
@@ -30,6 +28,8 @@ class BrowserState {
     // ===== 导航状态 =====
     var canGoBack by mutableStateOf(false)
     var canGoForward by mutableStateOf(false)
+    /** 是否显示首页覆盖层（独立于 URL，点击主页按钮时设置） */
+    var showHomePage by mutableStateOf(true)
 
     // ===== UI 状态 =====
     var isUrlFocused by mutableStateOf(false)
@@ -103,9 +103,12 @@ class BrowserState {
     val searchEngineLabel: String
         get() = activeSearchEngine.shortName
 
-    /** 是否在主页 */
+    /** 是否在主页（显示 StartPage 覆盖层）
+     *  - showHomePage 标记优先（点击主页按钮时设置）
+     *  - 未设置时根据 URL 判断
+     */
     val isHomePage: Boolean
-        get() = url == "about:start" || url == "about:blank" || url.isEmpty()
+        get() = showHomePage || url == "about:blank" || url.isEmpty()
 
     // ===== 引擎回调绑定 =====
     fun bindEngine(engine: GeckoEngine?) {
@@ -116,6 +119,10 @@ class BrowserState {
         engine.setNavigationListener(object : GeckoEngine.NavigationListener {
             override fun onLocationChanged(url: String) {
                 this@BrowserState.url = url
+                // 导航到真实页面时隐藏首页覆盖层
+                if (url.isNotEmpty() && url != "about:blank") {
+                    showHomePage = false
+                }
                 // 每次 URL 变化时检查书签状态
                 checkBookmarkStatus(url)
             }
@@ -141,6 +148,15 @@ class BrowserState {
             override fun onPageFinished(url: String) {
                 isLoading = false
                 progress = 100
+                // 自动记录浏览历史（跳过 about: 页面）
+                if (url.isNotBlank() && !url.startsWith("about:")) {
+                    com.gua.browser.GuaApp.instance.appScope.launch {
+                        com.gua.browser.GuaApp.instance.historyManager.recordVisit(
+                            title = this@BrowserState.pageTitle.ifEmpty { url },
+                            url = url
+                        )
+                    }
+                }
             }
 
             override fun onProgressChanged(progress: Int) {
@@ -156,6 +172,13 @@ class BrowserState {
         engine.setPageListener(object : GeckoEngine.PageListener {
             override fun onTitleChanged(title: String) {
                 pageTitle = title
+            }
+        })
+
+        engine.setFindListener(object : GeckoEngine.FindListener {
+            override fun onFindResult(result: org.mozilla.geckoview.GeckoSession.FinderResult) {
+                findMatchCount = result.total
+                findCurrentIndex = result.current + 1
             }
         })
 
@@ -176,8 +199,8 @@ class BrowserState {
             isBookmarked = false
             return
         }
-        // 异步检查
-        CoroutineScope(Dispatchers.IO).launch {
+        // 异步检查，使用 App 全局作用域避免泄漏
+        com.gua.browser.GuaApp.instance.appScope.launch {
             val exists = com.gua.browser.GuaApp.instance.bookmarkManager.exists(url)
             if (exists != isBookmarked) {
                 isBookmarked = exists

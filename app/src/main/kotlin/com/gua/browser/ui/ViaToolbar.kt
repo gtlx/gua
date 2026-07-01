@@ -3,32 +3,43 @@ package com.gua.browser.ui
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Via 风格工具栏 — 地址栏与工具栏合一
+ * Via 风格工具栏 — 极简无阴影，镂空图标
  *
- * 普通状态：◀ ▶ 🔄 ☆ [URL___________] □□  ☰
- * 编辑状态：[B] [输入框________________] [→]
+ * 普通状态：◀ ▶ ↻ ☆ [可滚动 URL] □□ ⋮
+ * 编辑状态：[B] [可滚动输入___________] [→]
  */
 @Composable
 fun ViaToolbar(
@@ -60,26 +71,27 @@ fun ViaToolbar(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier,
-        shadowElevation = 6.dp,
-        color = MaterialTheme.colorScheme.surface
+    // Via 风格：纯白背景，无阴影
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.White)
     ) {
         if (isFocused) {
-            // ===== 编辑状态：地址栏展开 =====
+            // ===== Via 编辑状态 =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 搜索引擎切换
+                // 搜索引擎缩写按钮
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFFF5F5F5))
                         .clickable(onClick = onSearchEngineSwitch),
                     contentAlignment = Alignment.Center
                 ) {
@@ -87,231 +99,223 @@ fun ViaToolbar(
                         text = searchEngineLabel.take(2),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color(0xFF333333)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
-                // 输入框 — 大字体
-                OutlinedTextField(
-                    value = urlText,
-                    onValueChange = onUrlChange,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    placeholder = {
-                        Text(
-                            "搜索或输入网址",
-                            fontSize = 15.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                // 可滚动输入框
+                val scrollState = rememberScrollState()
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    BasicTextField(
+                        value = urlText,
+                        onValueChange = onUrlChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                            .horizontalScroll(scrollState),
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            fontSize = 16.sp,
+                            color = Color(0xFF333333)
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box {
+                                if (urlText.isEmpty()) {
+                                    Text(
+                                        "搜索或输入网址",
+                                        fontSize = 15.sp,
+                                        color = Color(0xFFBBBBBB)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Go
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onGo = { onGo(urlText); onFocusChange(false) }
                         )
-                    },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Uri,
-                        imeAction = ImeAction.Go
-                    ),
-                    keyboardActions = KeyboardActions(onGo = { onGo(urlText); onFocusChange(false) })
-                )
+                    )
+                }
 
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // 前往按钮
-                IconButton(onClick = { onGo(urlText); onFocusChange(false) }) {
+                // 前往
+                IconButton(
+                    onClick = { onGo(urlText); onFocusChange(false) },
+                    modifier = Modifier.size(40.dp)
+                ) {
                     Icon(
-                        Icons.Default.ArrowForward,
+                        Icons.Outlined.ArrowForward,
                         contentDescription = "前往",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = Color(0xFF1565C0),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
         } else {
-            // ===== 普通状态：Via 风格组合工具栏 =====
+            // ===== Via 普通状态：极简工具栏 =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                    .height(52.dp),
+                    .padding(horizontal = 2.dp, vertical = 1.dp)
+                    .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 后退
-                if (showBack) {
-                    IconButton(
-                        onClick = onBack,
-                        enabled = canGoBack,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "后退",
-                            tint = if (canGoBack)
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                        )
-                    }
-                }
-
+                ToolbarIcon(
+                    icon = Icons.Outlined.ArrowBack,
+                    contentDesc = "后退",
+                    enabled = canGoBack,
+                    onClick = onBack
+                )
                 // 前进
-                if (showForward) {
-                    IconButton(
-                        onClick = onForward,
-                        enabled = canGoForward,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowForward,
-                            contentDescription = "前进",
-                            tint = if (canGoForward)
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                        )
-                    }
-                }
-
+                ToolbarIcon(
+                    icon = Icons.Outlined.ArrowForward,
+                    contentDesc = "前进",
+                    enabled = canGoForward,
+                    onClick = onForward
+                )
                 // 刷新/停止
                 if (isLoading) {
-                    IconButton(
-                        onClick = onStop,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "停止",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
+                    ToolbarIcon(
+                        icon = Icons.Outlined.Close,
+                        contentDesc = "停止",
+                        tint = Color(0xFFE53935),
+                        onClick = onStop
+                    )
                 } else {
-                    IconButton(
-                        onClick = onRefresh,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "刷新",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
+                    ToolbarIcon(
+                        icon = Icons.Outlined.Refresh,
+                        contentDesc = "刷新",
+                        onClick = onRefresh
+                    )
                 }
-
                 // 主页
                 if (showHome) {
-                    IconButton(
-                        onClick = onHome,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Home,
-                            contentDescription = "主页",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
+                    ToolbarIcon(
+                        icon = Icons.Outlined.Home,
+                        contentDesc = "主页",
+                        onClick = onHome
+                    )
                 }
-
                 // 收藏
                 IconButton(
                     onClick = onBookmark,
-                    modifier = Modifier.size(38.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        if (isBookmarked) Icons.Default.Star else Icons.Outlined.StarBorder,
+                        imageVector = if (isBookmarked) Icons.Filled.Star else Icons.Outlined.StarBorder,
                         contentDescription = "收藏",
-                        tint = if (isBookmarked)
-                            Color(0xFFFFB300)
-                        else
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        modifier = Modifier.size(22.dp)
+                        tint = if (isBookmarked) Color(0xFFFFB300) else Color(0xFF999999),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                // 地址栏（紧凑 — 圆角胶囊）
+                // Via 风格 URL 胶囊 — 可水平滚动
+                val urlScrollState = rememberScrollState()
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFF5F5F5))
                         .clickable { onFocusChange(true) },
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .fillMaxHeight(),
+                            .padding(horizontal = 10.dp)
+                            .fillMaxHeight()
+                            .horizontalScroll(urlScrollState),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 安全锁指示
-                        val lockColor = if (isSecure)
-                            Color(0xFF0D904F)
-                        else
-                            Color(0xFF9E9E9E)
                         Icon(
-                            Icons.Default.Lock,
+                            Icons.Outlined.Lock,
                             contentDescription = null,
-                            tint = lockColor,
-                            modifier = Modifier.size(14.dp)
+                            tint = if (isSecure) Color(0xFF0D904F) else Color(0xFFBBBBBB),
+                            modifier = Modifier.size(12.dp)
                         )
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        // URL 文本 — 增大字号
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (urlText.isNotEmpty()) urlText else "搜索或输入网址",
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                             color = if (urlText.isNotEmpty())
-                                MaterialTheme.colorScheme.onSurface
+                                Color(0xFF333333)
                             else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                                Color(0xFFBBBBBB),
+                            softWrap = false
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(2.dp))
 
                 // 标签数
                 if (showTabs) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
                             .clickable(onClick = onTabs),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "$tabCount",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color(0xFF666666)
                         )
                     }
                 }
-
                 // 菜单
                 if (showMenu) {
                     IconButton(
                         onClick = onMenu,
-                        modifier = Modifier.size(42.dp)
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            Icons.Default.MoreVert,
+                            Icons.Outlined.MoreVert,
                             contentDescription = "菜单",
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            tint = Color(0xFF666666),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Via 风格工具栏图标按钮
+ */
+@Composable
+private fun ToolbarIcon(
+    icon: ImageVector,
+    contentDesc: String,
+    enabled: Boolean = true,
+    tint: Color = Color(0xFF666666),
+    onClick: () -> Unit
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(36.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDesc,
+            tint = if (enabled) tint else tint.copy(alpha = 0.25f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

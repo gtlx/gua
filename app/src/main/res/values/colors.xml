@@ -1,21 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#1565C0</color>
-    <color name="on_primary">#FFFFFF</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="on_surface">#1C1B1F</color>
-    <color name="surface_container">#F3EDF7</color>
-    <color name="background">#FFFFFF</color>
-    <color name="on_background">#1C1B1F</color>
-    <color name="surface_variant">#E7E0EC</color>
-    <color name="outline">#79747E</color>
-
-    <!-- Chrome 风格状态 -->
-    <color name="secure_lock">#0D904F</color>
-    <color name="insecure_lock">#9E9E9E</color>
-
-    <!-- 夜间模式 -->
-    <color name="night_background">#1E1E1E</color>
-    <color name="night_surface">#2D2D2D</color>
-    <color name="night_on_surface">#E0E0E0</color>
+    <color name="gua_primary">#FF1565C0</color>
+    <color name="gua_primary_dark">#FF0D47A1</color>
+    <color name="gua_accent">#FFFF6F00</color>
+    <color name="gua_background">#FFFFFFFF</color>
+    <color name="gua_surface">#FFFFFFFF</color>
+    <color name="gua_on_surface">#FF1C1B1F</color>
+    <color name="gua_error">#FFB00020</color>
+    <color name="gua_secure">#FF0D904F</color>
 </resources>

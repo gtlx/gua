@@ -5,16 +5,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -28,14 +29,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * 浏览历史界面
- *
- * Via 风格：
- * - 按日期分组
- * - 搜索过滤
- * - 清空历史
- * - 点击打开
- * - 单条删除
+ * Via 风格历史记录 — 扁平列表，日期分组
  */
 @Composable
 fun HistoryScreen(
@@ -48,14 +42,10 @@ fun HistoryScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showClearConfirm by remember { mutableStateOf(false) }
 
-    // 加载历史
     LaunchedEffect(Unit) {
-        history = withContext(Dispatchers.IO) {
-            app.historyManager.getRecent(200)
-        }
+        history = withContext(Dispatchers.IO) { app.historyManager.getRecent(200) }
     }
 
-    // 搜索
     val filteredHistory = remember(history, searchQuery) {
         if (searchQuery.isBlank()) history
         else history.filter {
@@ -64,7 +54,6 @@ fun HistoryScreen(
         }
     }
 
-    // 按日期分组
     val groupedHistory = remember(filteredHistory) {
         groupByDate(filteredHistory)
     }
@@ -72,15 +61,15 @@ fun HistoryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFFF5F5F5))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // 顶部栏
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface
+            // Via 风格顶部
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
             ) {
                 Column {
                     Row(
@@ -92,17 +81,24 @@ fun HistoryScreen(
                     ) {
                         Text(
                             text = "历史记录 (${history.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF333333)
                         )
                         Row {
                             if (history.isNotEmpty()) {
-                                TextButton(onClick = { showClearConfirm = true }) {
-                                    Text("清空", color = MaterialTheme.colorScheme.error)
+                                TextButton(
+                                    onClick = { showClearConfirm = true },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text("清空", fontSize = 13.sp, color = Color(0xFFE53935))
                                 }
                             }
-                            TextButton(onClick = onDismiss) {
-                                Text("完成")
+                            TextButton(
+                                onClick = onDismiss,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0))
                             }
                         }
                     }
@@ -111,22 +107,25 @@ fun HistoryScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("搜索历史记录") },
+                        placeholder = { Text("搜索历史记录", color = Color(0xFFCCCCCC)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 4.dp),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                         leadingIcon = {
                             Icon(
-                                Icons.Default.Search,
+                                Icons.Outlined.Search,
                                 contentDescription = null,
+                                tint = Color(0xFF999999),
                                 modifier = Modifier.size(18.dp)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                            unfocusedBorderColor = Color(0xFFEEEEEE),
+                            focusedBorderColor = Color(0xFF1565C0),
+                            unfocusedContainerColor = Color(0xFFF5F5F5),
+                            focusedContainerColor = Color.White
                         )
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -141,28 +140,28 @@ fun HistoryScreen(
                     Text(
                         text = if (searchQuery.isNotEmpty()) "未找到匹配的记录"
                                else "暂无浏览记录",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        color = Color(0xFF999999),
+                        fontSize = 15.sp
                     )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(12.dp)
+                    contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
                     groupedHistory.forEach { (dateLabel, items) ->
-                        // 日期分组标题
                         item {
                             Text(
                                 text = dateLabel,
-                                style = MaterialTheme.typography.labelLarge,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp)
+                                color = Color(0xFF999999),
+                                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 2.dp)
                             )
                         }
 
                         items(items, key = { it.id }) { item ->
-                            HistoryCard(
+                            HistoryRow(
                                 item = item,
                                 onClick = {
                                     onOpenUrl(item.url)
@@ -183,7 +182,6 @@ fun HistoryScreen(
             }
         }
 
-        // 清空确认
         if (showClearConfirm) {
             AlertDialog(
                 onDismissRequest = { showClearConfirm = false },
@@ -197,7 +195,7 @@ fun HistoryScreen(
                         }
                         showClearConfirm = false
                     }) {
-                        Text("清空", color = MaterialTheme.colorScheme.error)
+                        Text("清空", color = Color(0xFFE53935))
                     }
                 },
                 dismissButton = {
@@ -210,92 +208,83 @@ fun HistoryScreen(
     }
 }
 
-/**
- * 历史记录卡片
- */
 @Composable
-fun HistoryCard(
+fun HistoryRow(
     item: HistoryItem,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+            .background(Color.White)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF0F0F0)),
+            contentAlignment = Alignment.Center
         ) {
-            // 网页图标占位
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = item.title.firstOrNull()?.uppercase() ?: "W",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            Text(
+                text = item.title.firstOrNull()?.uppercase() ?: "W",
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                color = Color(0xFF666666)
+            )
+        }
 
-            Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.title.ifEmpty { item.url },
+                fontSize = 14.sp,
+                color = Color(0xFF333333),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row {
                 Text(
-                    text = item.title.ifEmpty { item.url },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    text = item.url,
+                    fontSize = 11.sp,
+                    color = Color(0xFF999999),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-                Row {
-                    Text(
-                        text = item.url,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "x${item.visitCount}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
-                }
-            }
-
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                    modifier = Modifier.size(16.dp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "x${item.visitCount}",
+                    fontSize = 10.sp,
+                    color = Color(0xFFCCCCCC)
                 )
             }
         }
+
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(26.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Close,
+                contentDescription = "删除",
+                tint = Color(0xFFCCCCCC),
+                modifier = Modifier.size(14.dp)
+            )
+        }
     }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(Color(0xFFEEEEEE))
+    )
 }
 
-/**
- * 按日期分组历史记录
- */
 private fun groupByDate(items: List<HistoryItem>): List<Pair<String, List<HistoryItem>>> {
     val calendar = Calendar.getInstance()
     val today = Calendar.getInstance()

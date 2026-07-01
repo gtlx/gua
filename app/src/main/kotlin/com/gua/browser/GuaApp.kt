@@ -5,13 +5,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import android.util.Log
-import androidx.lifecycle.lifecycleScope
 import com.gua.browser.adblock.AdBlockEngine
 import com.gua.browser.bookmark.BookmarkManager
 import com.gua.browser.bookmark.HistoryManager
 import com.gua.browser.core.storage.KVStorage
 import com.gua.browser.download.AppDownloadManager
-import com.gua.browser.download.GeckoRuntimeDownloader
 import com.gua.browser.settings.AppSettings
 import com.gua.browser.userscript.ScriptManager
 import kotlinx.coroutines.CoroutineScope
@@ -45,8 +43,6 @@ class GuaApp : Application() {
     lateinit var downloadManager: AppDownloadManager
         private set
     lateinit var appSettings: AppSettings
-        private set
-    lateinit var runtimeDownloader: GeckoRuntimeDownloader
         private set
     lateinit var kvStorage: KVStorage
         private set
@@ -97,8 +93,6 @@ class GuaApp : Application() {
         historyManager = HistoryManager(this)
         downloadManager = AppDownloadManager(this)
         appSettings = AppSettings(this)
-        runtimeDownloader = GeckoRuntimeDownloader(this)
-
         Log.d("GuaApp", "所有管理器初始化完成")
     }
 

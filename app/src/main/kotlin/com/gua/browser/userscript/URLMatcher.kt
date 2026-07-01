@@ -29,6 +29,10 @@ object URLMatcher {
         return matchesAny(url, excludePatterns)
     }
 
+    // 编译后的正则缓存
+    private val patternCache = mutableMapOf<String, Regex>()
+    private const val CACHE_MAX_SIZE = 200
+
     /**
      * 核心匹配逻辑
      */
@@ -39,8 +43,9 @@ object URLMatcher {
 
     /**
      * 将 Tampermonkey 通配符模式编译为正则
+     * 结果缓存至 patternCache，避免重复编译
      */
-    private fun compile(pattern: String): Regex? {
+    fun compile(pattern: String): Regex? {
         if (pattern.isBlank()) return null
 
         val sb = StringBuilder()
@@ -74,7 +79,8 @@ object URLMatcher {
                     i += 1
                 }
                 '|', '(', ')', '[', ']', '{', '}', '^', '$', '+', '\\' -> {
-                    sb.append("\\$c")
+                    sb.append("\\")
+                    sb.append(c)
                     i += 1
                 }
                 else -> {
@@ -85,7 +91,16 @@ object URLMatcher {
         }
 
         return try {
-            Regex(sb.toString(), RegexOption.IGNORE_CASE)
+            val regexString = sb.toString()
+            // 从缓存读取，避免重复编译
+            patternCache[regexString]?.let { return it }
+            // 控制缓存大小
+            if (patternCache.size >= CACHE_MAX_SIZE) {
+                patternCache.clear()
+            }
+            val regex = Regex(regexString, RegexOption.IGNORE_CASE)
+            patternCache[regexString] = regex
+            regex
         } catch (e: Exception) {
             null
         }

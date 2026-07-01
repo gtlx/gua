@@ -1,16 +1,15 @@
 package com.gua.browser.ui.home
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,7 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Via 风格起始页
+ * Via 风格起始页 — 纯白，无投影，极简
  */
 @Composable
 fun StartPage(
@@ -38,7 +36,6 @@ fun StartPage(
     onOpenUrl: (String) -> Unit,
     onFocusSearch: () -> Unit
 ) {
-    val context = LocalContext.current
     val app = GuaApp.instance
     var bookmarks by remember { mutableStateOf<List<Bookmark>>(emptyList()) }
 
@@ -49,91 +46,80 @@ fun StartPage(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.White)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
-        // Logo / 标题
+        // Logo
         Text(
             text = "GuaBrowser",
-            fontSize = 22.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = Color(0xFF1565C0)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // 搜索框（居中）
-        Surface(
+        // 搜索框
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .clickable(onClick = onFocusSearch),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            shadowElevation = 2.dp
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color(0xFFF5F5F5))
+                .clickable(onClick = onFocusSearch)
+                .padding(horizontal = 16.dp, vertical = 11.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Default.Search,
+                    Icons.Outlined.Search,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
+                    tint = Color(0xFFBBBBBB),
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "搜索或输入网址",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    fontSize = 15.sp
+                    fontSize = 14.sp,
+                    color = Color(0xFFBBBBBB)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         // 快捷入口
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            QuickTile(Icons.Default.List, "书签",
+            QuickTile(Icons.Outlined.Bookmarks, "书签",
                 onClick = { state.showBookmarks = true })
-            QuickTile(Icons.Default.Refresh, "历史",
+            QuickTile(Icons.Outlined.History, "历史",
                 onClick = { state.showHistory = true })
-            QuickTile(Icons.Default.Done, "下载",
+            QuickTile(Icons.Outlined.Download, "下载",
                 onClick = { })
-            QuickTile(Icons.Default.Settings, "设置",
+            QuickTile(Icons.Outlined.Settings, "设置",
                 onClick = { state.showSettings = true })
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = "书签",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.align(Alignment.Start)
-        )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        if (bookmarks.isNotEmpty()) {
+            Text(
+                text = "书签",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF999999),
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(start = 4.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // 书签网格
-        if (bookmarks.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "暂无书签",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    fontSize = 14.sp
-                )
-            }
-        } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(4.dp),
@@ -157,29 +143,29 @@ private fun QuickTile(icon: ImageVector, label: String, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(12.dp)
+            .padding(8.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF0F0F0)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 icon,
                 contentDescription = label,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+                tint = Color(0xFF666666),
+                modifier = Modifier.size(20.dp)
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            fontSize = 10.sp,
+            color = Color(0xFF888888)
         )
     }
 }
@@ -191,29 +177,29 @@ private fun BookmarkTile(title: String, url: String, onClick: () -> Unit) {
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(8.dp)
+            .padding(6.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF0F0F0)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = title.firstOrNull()?.uppercase() ?: "W",
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 16.sp
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = Color(0xFF666666)
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = title,
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            color = Color(0xFF888888)
         )
     }
 }

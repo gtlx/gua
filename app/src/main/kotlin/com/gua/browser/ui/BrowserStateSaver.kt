@@ -6,6 +6,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -81,7 +82,7 @@ class BrowserStateSaver(
     fun save(state: BrowserState) {
         saveJob?.cancel()
         saveJob = scope.launch {
-            kotlinx.coroutines.delay(300) // debounce
+            delay(300) // debounce
             context.stateStore.edit { prefs ->
                 prefs[KEY_NIGHT_MODE] = if (state.isNightMode) 1 else 0
                 prefs[KEY_ADBLOCK] = if (state.isAdblockEnabled) 1 else 0
