@@ -6,7 +6,7 @@ composeKotlinCompiler = "1.5.14"
 activity-compose = "1.9.3"
 lifecycle = "2.8.7"
 coroutines = "1.9.0"
-geckoview = "136.0.20250227124745"
+geckoview = "152.0.20260629141727"
 datastore = "1.1.1"
 
 [libraries]
