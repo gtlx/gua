@@ -8,6 +8,7 @@ import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.GeckoView
+
 /**
  * GeckoView 引擎封装
  *
@@ -81,34 +82,13 @@ class GeckoEngine(
         }
         geckoSession.permissionDelegate = object : GeckoSession.PermissionDelegate {
             override fun onContentPermissionRequest(session: GeckoSession, perm: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
-                // 安全策略：地理位置默认允许（对浏览器友好），其他权限提示用户
-                val permissionType = when (perm) {
-                    is GeckoSession.PermissionDelegate.ContentPermission -> perm.type
-                    else -> GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
-                }
-                // 地理位置总是允许，其他高风险权限默认拒绝
-                val result = if (permissionType == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION) {
+                // 安全：地理位置默认允许，其他高风险权限默认拒绝
+                val result = if (perm.permissionType == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION) {
                     GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
                 } else {
                     GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
                 }
                 return GeckoResult.fromValue(result)
-            }
-
-            override fun onMediaPermissionRequest(
-                session: GeckoSession,
-                uri: String?,
-                video: Array<out GeckoSession.PermissionDelegate.MediaSource>?,
-                audio: Array<out GeckoSession.PermissionDelegate.MediaSource>?,
-                callback: GeckoSession.PermissionDelegate.MediaCallback
-            ) {
-                // 媒体权限：默认拒绝，用户需通过设置开启
-                callback.reject()
-            }
-
-            override fun onNotificationPermissionRequest(session: GeckoSession, uri: String?): GeckoResult<Int>? {
-                // 通知权限默认拒绝
-                return GeckoResult.fromValue(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
             }
         }
         geckoView.setSession(geckoSession)
@@ -119,10 +99,7 @@ class GeckoEngine(
     override val session: GeckoSession? get() = geckoSession
 
     override fun loadUrl(url: String) {
-        // 确保 session 是打开的
-        if (!geckoSession.isOpen) {
-            geckoSession.open(runtime)
-        }
+        if (!geckoSession.isOpen) geckoSession.open(runtime)
         geckoSession.loadUri(url)
     }
     override fun goBack(): Boolean {
@@ -142,20 +119,14 @@ class GeckoEngine(
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
         if (callback != null) {
-            geckoSession.evaluateJavascript(script) { value ->
+            geckoSession.evaluateJavascript(script, GeckoSession.JavaScriptCallback { value ->
                 callback(value)
-            }
+            })
         } else {
             geckoSession.evaluateJavascript(script, null)
         }
     }
 
-    /**
-     * 应用引擎设置
-     *
-     * 通过重新创建 GeckoSession 来应用设置，
-     * 避免使用反射修改私有字段。
-     */
     override fun applySettings(settings: EngineSettings) {
         val builder = GeckoSessionSettings.Builder()
         builder.userAgentMode(
@@ -167,22 +138,16 @@ class GeckoEngine(
         builder.usePrivateMode(false)
         sessionSettings = builder.build()
 
-        // 重建会话以应用新设置
-        // 注意：必须更新 geckoSession 引用，否则后续 loadUrl/reload 操作在已关闭的旧 session 上
+        // 重建会话以应用新设置，并更新 geckoSession 引用
         val oldSession = geckoSession
         val newSession = GeckoSession(sessionSettings)
         copyDelegates(oldSession, newSession)
-        // 复制查找代理
-        newSession.finder.setDelegate(oldSession.finder.getDelegate())
         geckoView.setSession(newSession)
         newSession.open(runtime)
-        geckoSession = newSession  // 更新引用，保证后续操作在新 session 上
+        geckoSession = newSession
         oldSession.close()
     }
 
-    /**
-     * 将旧 session 的代理复制到新 session
-     */
     private fun copyDelegates(old: GeckoSession, new: GeckoSession) {
         new.contentDelegate = old.contentDelegate
         new.navigationDelegate = old.navigationDelegate
@@ -195,7 +160,7 @@ class GeckoEngine(
             geckoSession.finder.clear()
             return
         }
-        val findFlags = if (forward) 0 else GeckoSession.FINDER_FIND_BACKWARDS
+        val findFlags = if (forward) 0 else 1 // 1 = backwards
         geckoSession.finder.find(query, findFlags)
     }
 
@@ -207,22 +172,6 @@ class GeckoEngine(
     override fun onResume() { if (!geckoSession.isOpen) geckoSession.open(runtime) }
     override fun onPause() {}
     override fun onDestroy() { geckoSession.close() }
-
-    // ===== 查找监听器 =====
-    init {
-        geckoSession.finder.delegate = object : GeckoSession.FinderDelegate {
-            override fun onFindResult(session: GeckoSession, result: GeckoSession.FinderResult) {
-                findListener?.onFindResult(result)
-            }
-        }
-    }
-
-    private var findListener: FindListener? = null
-    fun setFindListener(l: FindListener) { findListener = l }
-
-    interface FindListener {
-        fun onFindResult(result: GeckoSession.FinderResult) {}
-    }
 
     // ===== 监听器接口 =====
     interface NavigationListener {

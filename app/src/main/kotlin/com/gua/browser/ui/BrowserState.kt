@@ -175,13 +175,6 @@ class BrowserState {
             }
         })
 
-        engine.setFindListener(object : GeckoEngine.FindListener {
-            override fun onFindResult(result: org.mozilla.geckoview.GeckoSession.FinderResult) {
-                findMatchCount = result.total
-                findCurrentIndex = result.current + 1
-            }
-        })
-
         // 应用当前桌面模式设置
         applyDesktopMode()
     }
