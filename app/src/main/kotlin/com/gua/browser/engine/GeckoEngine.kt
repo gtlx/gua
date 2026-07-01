@@ -83,7 +83,7 @@ class GeckoEngine(
         geckoSession.permissionDelegate = object : GeckoSession.PermissionDelegate {
             override fun onContentPermissionRequest(session: GeckoSession, perm: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
                 // 安全：地理位置默认允许，其他高风险权限默认拒绝
-                val result = if (perm.permissionType == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION) {
+                val result = if (perm.type == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION) {
                     GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
                 } else {
                     GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
@@ -118,12 +118,15 @@ class GeckoEngine(
     override fun canGoForward(): Boolean = _canGoForward
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
-        if (callback != null) {
-            geckoSession.evaluateJavascript(script, GeckoSession.JavaScriptCallback { value ->
-                callback(value)
-            })
-        } else {
-            geckoSession.evaluateJavascript(script, null)
+        try {
+            val result = geckoSession.evaluateJavascript(script)
+            if (callback != null) {
+                result.accept { value ->
+                    callback(value)
+                }
+            }
+        } catch (_: Exception) {
+            callback?.invoke(null)
         }
     }
 
