@@ -130,6 +130,9 @@ class GeckoEngine(
     }
 
     override fun applySettings(settings: EngineSettings) {
+        // 保存当前 URL（在重建会话前读取）
+        val savedUrl = currentUrl ?: ""
+
         val builder = GeckoSessionSettings.Builder()
         builder.userAgentMode(
             if (settings.desktopMode)
@@ -141,14 +144,23 @@ class GeckoEngine(
         builder.useTrackingProtection(true)
         sessionSettings = builder.build()
 
-        // 重建会话以应用新设置，并更新 geckoSession 引用
-        val oldSession = geckoSession
-        val newSession = GeckoSession(sessionSettings)
-        copyDelegates(oldSession, newSession)
-        geckoView.setSession(newSession)
-        newSession.open(runtime)
-        geckoSession = newSession
-        oldSession.close()
+        // 重建会话以应用新设置
+        try {
+            val oldSession = geckoSession
+            val newSession = GeckoSession(sessionSettings)
+            copyDelegates(oldSession, newSession)
+            geckoView.setSession(newSession)
+            newSession.open(runtime)
+            geckoSession = newSession
+            oldSession.close()
+
+            // 重建后重新加载当前页面
+            if (savedUrl.isNotBlank() && !savedUrl.startsWith("about:")) {
+                geckoSession.loadUri(savedUrl)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("GeckoEngine", "applySettings failed", e)
+        }
     }
 
     private fun copyDelegates(old: GeckoSession, new: GeckoSession) {

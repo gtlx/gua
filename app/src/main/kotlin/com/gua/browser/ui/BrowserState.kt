@@ -185,18 +185,14 @@ class BrowserState {
         applyDesktopMode()
     }
 
-    /** 应用桌面/隐私模式，重建会话后重新加载当前页面 */
+    /** 应用桌面/隐私模式，applySettings 内部会重建会话+重载页面 */
     fun applyDesktopMode() {
-        val currentUrl = this.url
         currentEngine?.applySettings(
             EngineSettings(
                 desktopMode = isDesktopMode,
                 privateMode = isIncognito
             )
         )
-        if (currentUrl.isNotBlank() && !currentUrl.startsWith("about:")) {
-            currentEngine?.loadUrl(currentUrl)
-        }
     }
 
     /** 检查当前 URL 是否已收藏 */
