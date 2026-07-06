@@ -64,9 +64,6 @@ fun DownloadScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("下载", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
-                    TextButton(onClick = onDismiss, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
-                        Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0))
-                    }
                 }
             }
 

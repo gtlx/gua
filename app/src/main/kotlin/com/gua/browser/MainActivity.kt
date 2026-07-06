@@ -40,6 +40,8 @@ import com.gua.browser.ui.bookmark.BookmarkScreen
 import com.gua.browser.ui.bookmark.HistoryScreen
 import com.gua.browser.ui.download.DownloadScreen
 import com.gua.browser.ui.home.StartPage
+import com.gua.browser.ui.settings.ExtensionScreen
+import com.gua.browser.ui.settings.PermissionScreen
 import com.gua.browser.ui.settings.ScriptManagerScreen
 import com.gua.browser.ui.settings.SettingsScreen
 import kotlinx.coroutines.Dispatchers
@@ -114,6 +116,7 @@ fun BrowserContent() {
     LaunchedEffect(Unit) {
         val runtime = GeckoRuntime.getDefault(context)
         app.scriptManager.setRuntime(runtime)
+        app.extensionManager.setRuntime(runtime)
     }
 
     LaunchedEffect(Unit) {
@@ -153,6 +156,7 @@ fun BrowserContent() {
     BackHandler {
         when {
             state.showSearchEnginePicker -> state.showSearchEnginePicker = false
+            state.showExtensions -> state.showExtensions = false
             state.showSettings -> state.showSettings = false
             state.showScriptManager -> state.showScriptManager = false
             state.showBookmarks -> state.showBookmarks = false
@@ -161,6 +165,7 @@ fun BrowserContent() {
             state.showTabSwitcher -> state.showTabSwitcher = false
             state.showQuickSettings -> state.showQuickSettings = false
             state.showFindInPage -> state.showFindInPage = false
+            state.showPermissionSettings -> state.showPermissionSettings = false
             state.isUrlFocused -> state.isUrlFocused = false
             engineManager?.activeTab?.engine?.canGoBack() == true ->
                 engineManager?.activeTab?.engine?.goBack()
@@ -174,15 +179,36 @@ fun BrowserContent() {
             onDismissRequest = { state.respondToPermission(false) },
             title = { Text("权限请求") },
             text = {
-                Text("${perm.uri}\n\n请求 ${perm.typeName} 权限")
+                Column {
+                    Text("${perm.uri}\n\n请求 ${perm.typeName} 权限")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable {
+                            state.pendingPermissionRemember = !state.pendingPermissionRemember
+                        }
+                    ) {
+                        Checkbox(
+                            checked = state.pendingPermissionRemember,
+                            onCheckedChange = { state.pendingPermissionRemember = it },
+                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF1565C0))
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("记住选择", fontSize = 14.sp, color = Color(0xFF666666))
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = { state.respondToPermission(true) }) {
+                TextButton(onClick = {
+                    state.respondToPermission(true, state.pendingPermissionRemember)
+                }) {
                     Text("允许", color = Color(0xFF1565C0))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { state.respondToPermission(false) }) {
+                TextButton(onClick = {
+                    state.respondToPermission(false, state.pendingPermissionRemember)
+                }) {
                     Text("拒绝", color = Color(0xFFE53935))
                 }
             }
@@ -196,13 +222,13 @@ fun BrowserContent() {
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .windowInsetsPadding(WindowInsets.ime)
         ) {
             // ===== 正常浏览模式（含快速设置面板，共享系统栏内边距）=====
             if (!state.showTabSwitcher && !state.showScriptManager) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.systemBars)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     Column(
                         modifier = Modifier.fillMaxSize()
@@ -291,6 +317,10 @@ fun BrowserContent() {
                         onScriptManager = {
                             state.showQuickSettings = false
                             state.showScriptManager = true
+                        },
+                        onExtensions = {
+                            state.showQuickSettings = false
+                            state.showExtensions = true
                         },
                         onBookmarks = {
                             state.showQuickSettings = false
@@ -479,6 +509,20 @@ fun BrowserContent() {
                             Text("取消")
                         }
                     }
+                )
+            }
+
+            // ===== 扩展管理界面 =====
+            if (state.showExtensions) {
+                ExtensionScreen(
+                    onDismiss = { state.showExtensions = false }
+                )
+            }
+
+            // ===== 权限管理界面 =====
+            if (state.showPermissionSettings) {
+                PermissionScreen(
+                    onDismiss = { state.showPermissionSettings = false }
                 )
             }
 

@@ -94,12 +94,6 @@ fun HistoryScreen(
                                     Text("清空", fontSize = 13.sp, color = Color(0xFFE53935))
                                 }
                             }
-                            TextButton(
-                                onClick = onDismiss,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0))
-                            }
                         }
                     }
 

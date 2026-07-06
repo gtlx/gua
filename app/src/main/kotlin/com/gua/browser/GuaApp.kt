@@ -10,7 +10,9 @@ import com.gua.browser.bookmark.BookmarkManager
 import com.gua.browser.bookmark.HistoryManager
 import com.gua.browser.core.storage.KVStorage
 import com.gua.browser.download.AppDownloadManager
+import com.gua.browser.extension.ExtensionManager
 import com.gua.browser.settings.AppSettings
+import com.gua.browser.settings.PermissionStore
 import com.gua.browser.userscript.ScriptManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +36,8 @@ class GuaApp : Application() {
 
     lateinit var scriptManager: ScriptManager
         private set
+    lateinit var extensionManager: ExtensionManager
+        private set
     lateinit var adBlockEngine: AdBlockEngine
         private set
     lateinit var bookmarkManager: BookmarkManager
@@ -43,6 +47,8 @@ class GuaApp : Application() {
     lateinit var downloadManager: AppDownloadManager
         private set
     lateinit var appSettings: AppSettings
+        private set
+    lateinit var permissionStore: PermissionStore
         private set
     lateinit var kvStorage: KVStorage
         private set
@@ -86,6 +92,7 @@ class GuaApp : Application() {
         scriptManager = ScriptManager(this, appScope).also {
             it.init()
         }
+        extensionManager = ExtensionManager(this, appScope)
         adBlockEngine = AdBlockEngine(this).also {
             appScope.launch { it.init() }
         }
@@ -93,11 +100,13 @@ class GuaApp : Application() {
         historyManager = HistoryManager(this)
         downloadManager = AppDownloadManager(this)
         appSettings = AppSettings(this)
+        permissionStore = PermissionStore(this)
         Log.d("GuaApp", "所有管理器初始化完成")
     }
 
     override fun onTerminate() {
         scriptManager.destroy()
+        extensionManager.destroy()
         appScope.cancel() // 清理所有协程
         super.onTerminate()
     }

@@ -61,11 +61,6 @@ fun ScriptManagerScreen(
                             onClick = { showInstallDialog = true },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) { Text("+ 安装", fontSize = 13.sp, color = Color(0xFF1565C0)) }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        TextButton(
-                            onClick = onDismiss,
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) { Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0)) }
                     }
                 }
             }

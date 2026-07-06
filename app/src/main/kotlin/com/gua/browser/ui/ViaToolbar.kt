@@ -27,6 +27,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 /**
  * Via 风格工具栏
@@ -112,6 +115,7 @@ fun ViaToolbar(
 
                 // 可滚动输入框
                 val scrollState = rememberScrollState()
+                val focusRequester = remember { FocusRequester() }
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -124,7 +128,8 @@ fun ViaToolbar(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight()
-                            .horizontalScroll(scrollState),
+                            .horizontalScroll(scrollState)
+                            .focusRequester(focusRequester),
                         singleLine = true,
                         textStyle = TextStyle(
                             fontSize = 16.sp,
@@ -150,6 +155,12 @@ fun ViaToolbar(
                             onGo = { onGo(urlText); onFocusChange(false) }
                         )
                     )
+                }
+                LaunchedEffect(isFocused) {
+                    if (isFocused) {
+                        delay(100)
+                        focusRequester.requestFocus()
+                    }
                 }
 
                 // 前往

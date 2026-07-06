@@ -33,5 +33,4 @@ local.properties
 .classpath
 .settings/
 
-# Pi agent（完全排除）
-.pi/
+gradle

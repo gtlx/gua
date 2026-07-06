@@ -12,14 +12,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gua.browser.ui.settings.getMenuItems
 
 data class QuickItem(
     val id: String,
@@ -33,6 +36,7 @@ private val items = listOf(
     QuickItem("desktop", "桌面", Icons.Outlined.DesktopWindows),
     QuickItem("incognito", "无痕", Icons.Outlined.PrivateConnectivity),
     QuickItem("scripts", "脚本", Icons.Outlined.Code),
+    QuickItem("extensions", "扩展", Icons.Outlined.Extension),
     QuickItem("bookmarks", "书签", Icons.Outlined.BookmarkBorder),
     QuickItem("history", "历史", Icons.Outlined.History),
     QuickItem("downloads", "下载", Icons.Outlined.Download),
@@ -55,6 +59,7 @@ fun QuickSettingsPanel(
     onDesktopModeChange: (Boolean) -> Unit,
     onIncognitoChange: (Boolean) -> Unit = {},
     onScriptManager: () -> Unit,
+    onExtensions: () -> Unit,
     onBookmarks: () -> Unit,
     onHistory: () -> Unit,
     onDownloads: () -> Unit,
@@ -64,6 +69,8 @@ fun QuickSettingsPanel(
     onSettings: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val menuItems = remember { getMenuItems(context) }
     val alignToTop = toolbarAtTop
     val panelAlignment = if (alignToTop) Alignment.TopCenter else Alignment.BottomCenter
     val slideAnim = if (alignToTop)
@@ -118,7 +125,7 @@ fun QuickSettingsPanel(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(items) { item ->
+                            items(menuItems) { item ->
                                 val active = when (item.id) {
                                     "night_mode" -> isNightMode
                                     "adblock" -> isAdblockEnabled
@@ -143,6 +150,7 @@ fun QuickSettingsPanel(
                                                 "desktop" -> onDesktopModeChange(!isDesktopMode)
                                                 "incognito" -> onIncognitoChange(!isIncognito)
                                                 "scripts" -> onScriptManager()
+                                                "extensions" -> onExtensions()
                                                 "bookmarks" -> onBookmarks()
                                                 "history" -> onHistory()
                                                 "downloads" -> onDownloads()

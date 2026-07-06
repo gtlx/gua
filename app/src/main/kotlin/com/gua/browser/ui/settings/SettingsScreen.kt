@@ -42,13 +42,17 @@ fun SettingsScreen(
     val showSearchEngines = remember { mutableStateOf(false) }
     val showToolbarSettings = remember { mutableStateOf(false) }
     val showAdBlockRules = remember { mutableStateOf(false) }
+    val showImportExport = remember { mutableStateOf(false) }
+    val showMenuOrder = remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     // 子菜单返回：硬件返回键先回到主设置界面，不直接退出
-    BackHandler(showSearchEngines.value || showToolbarSettings.value || showAdBlockRules.value) {
+    BackHandler(showSearchEngines.value || showToolbarSettings.value || showAdBlockRules.value || showImportExport.value || showMenuOrder.value) {
         showSearchEngines.value = false
         showToolbarSettings.value = false
         showAdBlockRules.value = false
+        showImportExport.value = false
+        showMenuOrder.value = false
     }
 
     Box(
@@ -77,12 +81,21 @@ fun SettingsScreen(
                 state = state,
                 onDismiss = { showAdBlockRules.value = false }
             )
+            showImportExport.value -> ImportExportScreen(
+                state = state,
+                onDismiss = { showImportExport.value = false }
+            )
+            showMenuOrder.value -> MenuOrderScreen(
+                onDismiss = { showMenuOrder.value = false }
+            )
             else -> MainSettingsScreen(
                 state = state,
                 onDismiss = onDismiss,
                 onOpenSearchEngines = { showSearchEngines.value = true },
                 onOpenToolbarSettings = { showToolbarSettings.value = true },
                 onOpenAdBlockRules = { showAdBlockRules.value = true },
+                onOpenImportExport = { showImportExport.value = true },
+                onOpenMenuOrder = { showMenuOrder.value = true },
                 context = context
             )
         }
@@ -100,6 +113,8 @@ private fun MainSettingsScreen(
     onOpenSearchEngines: () -> Unit,
     onOpenToolbarSettings: () -> Unit,
     onOpenAdBlockRules: () -> Unit,
+    onOpenImportExport: () -> Unit,
+    onOpenMenuOrder: () -> Unit,
     context: android.content.Context
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -116,9 +131,6 @@ private fun MainSettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("设置", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
-                TextButton(onClick = onDismiss, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
-                    Text("完成", fontSize = 14.sp, color = Color(0xFF1565C0))
-                }
             }
         }
 
@@ -152,6 +164,14 @@ private fun MainSettingsScreen(
             item { SectionTitle("功能") }
             item {
                 SettingsItem(
+                    icon = Icons.Outlined.Extension,
+                    title = "扩展",
+                    subtitle = "管理 Firefox 扩展",
+                    onClick = { state.showExtensions = true; onDismiss() }
+                )
+            }
+            item {
+                SettingsItem(
                     icon = Icons.Outlined.Download,
                     title = "下载管理",
                     subtitle = "查看和管理下载的文件",
@@ -161,6 +181,14 @@ private fun MainSettingsScreen(
 
             // 隐私与安全
             item { SectionTitle("隐私与安全") }
+            item {
+                SettingsItem(
+                    icon = Icons.Outlined.Lock,
+                    title = "权限管理",
+                    subtitle = "管理网站权限设置",
+                    onClick = { state.showPermissionSettings = true; onDismiss() }
+                )
+            }
             item {
                 SettingsSwitchItem(
                     icon = Icons.Outlined.Shield,
@@ -210,45 +238,23 @@ private fun MainSettingsScreen(
                     onClick = onOpenToolbarSettings
                 )
             }
+            item {
+                SettingsItem(
+                    icon = Icons.Outlined.ViewAgenda,
+                    title = "菜单排序",
+                    subtitle = "自定义快速菜单按钮顺序",
+                    onClick = onOpenMenuOrder
+                )
+            }
 
             // 数据
             item { SectionTitle("数据") }
             item {
-                val exportScope = rememberCoroutineScope()
-                val exportLauncher = rememberLauncherForActivityResult(
-                    ActivityResultContracts.CreateDocument("application/zip")
-                ) { uri ->
-                    if (uri != null) {
-                        exportScope.launch {
-                            val data = DataManager.exportToZip(state)
-                            DataManager.writeUriBytes(context, uri, data)
-                        }
-                    }
-                }
                 SettingsItem(
-                    icon = Icons.Outlined.FileUpload,
-                    title = "导出数据",
-                    subtitle = "书签、设置、搜索引擎",
-                    onClick = { exportLauncher.launch("gua_backup.zip") }
-                )
-            }
-            item {
-                val importScope = rememberCoroutineScope()
-                val importLauncher = rememberLauncherForActivityResult(
-                    ActivityResultContracts.OpenDocument()
-                ) { uri ->
-                    if (uri != null) {
-                        importScope.launch {
-                            val data = DataManager.readUriBytes(context, uri)
-                            if (data != null) DataManager.importFromZip(data, state)
-                        }
-                    }
-                }
-                SettingsItem(
-                    icon = Icons.Outlined.Download,
-                    title = "导入数据",
-                    subtitle = "恢复书签和设置",
-                    onClick = { importLauncher.launch(arrayOf("application/zip")) }
+                    icon = Icons.Outlined.SwapHoriz,
+                    title = "导入/导出",
+                    subtitle = "书签和设置数据备份与恢复",
+                    onClick = onOpenImportExport
                 )
             }
 

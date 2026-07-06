@@ -37,6 +37,7 @@ class BrowserState {
     var showScriptManager by mutableStateOf(false)
     var showFindInPage by mutableStateOf(false)
     var showSearchEngineSettings by mutableStateOf(false)
+    var showExtensions by mutableStateOf(false)
     var showSettings by mutableStateOf(false)
     var showBookmarks by mutableStateOf(false)
     var showHistory by mutableStateOf(false)
@@ -90,7 +91,6 @@ class BrowserState {
     // ===== 搜索 =====
     var searchEngines by mutableStateOf(
         mutableListOf(
-            SearchEngine("百度", "https://www.baidu.com/s?wd=%s", "B"),
             SearchEngine("必应", "https://www.bing.com/search?q=%s", "G"),
             SearchEngine("谷歌", "https://www.google.com/search?q=%s", "Gg"),
             SearchEngine("搜狗", "https://www.sogou.com/web?query=%s", "Sg"),
@@ -188,6 +188,14 @@ class BrowserState {
 
         engine.setPermissionListener(object : GeckoEngine.PermissionListener {
             override fun onPermissionRequest(uri: String, type: Int): org.mozilla.geckoview.GeckoResult<Int>? {
+                // 先查持久化记录
+                val saved = com.gua.browser.GuaApp.instance.permissionStore.get(uri, type)
+                if (saved != null) {
+                    return org.mozilla.geckoview.GeckoResult.fromValue(
+                        if (saved) GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
+                        else GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
+                    )
+                }
                 val typeName = when (type) {
                     0 -> "地理位置"
                     1 -> "桌面通知"
@@ -255,15 +263,23 @@ class BrowserState {
         val typeName: String
     )
     var pendingPermission by mutableStateOf<PermissionRequest?>(null)
+    var pendingPermissionRemember by mutableStateOf(false)
     private var pendingGeckoResult: org.mozilla.geckoview.GeckoResult<Int>? = null
 
-    fun respondToPermission(allow: Boolean) {
+    var showPermissionSettings by mutableStateOf(false)
+
+    fun respondToPermission(allow: Boolean, remember: Boolean = false) {
+        val perm = pendingPermission
+        if (remember && perm != null) {
+            com.gua.browser.GuaApp.instance.permissionStore.set(perm.uri, perm.type, allow)
+        }
         pendingGeckoResult?.complete(
             if (allow) org.mozilla.geckoview.GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
             else org.mozilla.geckoview.GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
         )
         pendingGeckoResult = null
         pendingPermission = null
+        pendingPermissionRemember = false
     }
 
     // ===== 搜索引擎管理 =====
