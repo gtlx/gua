@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -71,13 +72,11 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.foundation)
     implementation(libs.compose.runtime)
-    implementation(libs.compose.navigation)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.activity.compose)
 
     // Lifecycle
     implementation(libs.lifecycle.runtime)
-    implementation(libs.lifecycle.viewmodel)
 
     // Coroutines
     implementation(libs.coroutines.core)
@@ -88,6 +87,9 @@ dependencies {
 
     // Storage
     implementation(libs.datastore.preferences)
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
 
     // Test
     testImplementation("junit:junit:4.13.2")

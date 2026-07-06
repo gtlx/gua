@@ -83,18 +83,27 @@ class ScriptInjector(private val context: Context) {
      * 卸载脚本
      */
     fun uninstallScript(scriptId: Long) {
-        registeredExtensions.remove(scriptId)?.let { ext ->
-            // GeckoView 没有直接的 unregister API，但可以通过
-            // WebExtensionController 管理
-            // GeckoView unregister is not directly supported
+        val ext = registeredExtensions.remove(scriptId) ?: return
+        try {
+            runtime?.webExtensionController?.let { controller ->
+                controller.uninstall(ext)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "卸载失败: $scriptId", e)
         }
+        cleanupExtensionDir(scriptId)
+    }
+
+    private fun cleanupExtensionDir(scriptId: Long) {
+        val dir = File(context.cacheDir, "$EXTENSION_DIR/$scriptId")
+        if (dir.exists()) dir.deleteRecursively()
     }
 
     /**
      * 重新加载所有脚本
      */
     fun reloadAll(repository: ScriptRepository) {
-        registeredExtensions.clear()
+        registeredExtensions.keys.toList().forEach { uninstallScript(it) }
         installAll(repository)
     }
 
@@ -466,11 +475,73 @@ class ScriptInjector(private val context: Context) {
             .replace("\t", "\\t")
     }
 
-    fun destroy() {
-        registeredExtensions.clear()
-        val baseDir = File(context.cacheDir, EXTENSION_DIR)
-        if (baseDir.exists()) {
-            baseDir.deleteRecursively()
+    // ===== 夜间模式扩展 =====
+    private val NIGHT_MODE_EXT_ID = -1L
+    private val NIGHT_MODE_DIR = "gua_nightmode"
+
+    fun installNightMode(enabled: Boolean) {
+        if (enabled) {
+            uninstallNightMode()
+            try {
+                val extDir = createNightModeExtensionDir()
+                val uri = extDir.toURI().toString()
+                runtime?.webExtensionController?.install(uri)?.accept { ext ->
+                    if (ext != null) registeredExtensions[NIGHT_MODE_EXT_ID] = ext
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "夜间模式安装失败", e)
+            }
+        } else {
+            uninstallNightMode()
         }
+    }
+
+    private fun uninstallNightMode() {
+        registeredExtensions.remove(NIGHT_MODE_EXT_ID)?.let { ext ->
+            try { runtime?.webExtensionController?.uninstall(ext) } catch (_: Exception) {}
+        }
+        val dir = File(context.cacheDir, NIGHT_MODE_DIR)
+        if (dir.exists()) dir.deleteRecursively()
+    }
+
+    private fun createNightModeExtensionDir(): File {
+        val dir = File(context.cacheDir, NIGHT_MODE_DIR)
+        if (dir.exists()) dir.deleteRecursively()
+        dir.mkdirs()
+
+        val manifest = buildString {
+            appendLine("{")
+            appendLine("  \"manifest_version\": 2,")
+            appendLine("  \"name\": \"GuaBrowser Night Mode\",")
+            appendLine("  \"version\": \"1.0\",")
+            appendLine("  \"content_scripts\": [{")
+            appendLine("    \"matches\": [\"<all_urls>\"],")
+            appendLine("    \"js\": [\"night-mode.js\"],")
+            appendLine("    \"run_at\": \"document_start\"")
+            appendLine("  }]")
+            appendLine("}")
+        }
+        File(dir, "manifest.json").writeText(manifest)
+
+        val js = """(function() {
+  'use strict';
+  var s = document.createElement('style');
+  s.id = '__gua_night_mode';
+  s.textContent = [
+    'html { -webkit-filter: invert(1) hue-rotate(180deg); filter: invert(1) hue-rotate(180deg); }',
+    'img, video, canvas, iframe, [style*="background-image"] { -webkit-filter: invert(1) hue-rotate(180deg); filter: invert(1) hue-rotate(180deg); }'
+  ].join(' ');
+  document.documentElement.appendChild(s);
+})();"""
+        File(dir, "night-mode.js").writeText(js)
+
+        return dir
+    }
+
+    fun destroy() {
+        registeredExtensions.keys.toList().forEach { uninstallScript(it) }
+        uninstallNightMode()
+        val baseDir = File(context.cacheDir, EXTENSION_DIR)
+        if (baseDir.exists()) baseDir.deleteRecursively()
     }
 }

@@ -1,6 +1,7 @@
 [versions]
 agp = "8.7.3"
 kotlin = "1.9.24"
+serialization-json = "1.6.3"
 compose = "1.7.6"
 composeKotlinCompiler = "1.5.14"
 activity-compose = "1.9.3"
@@ -16,16 +17,17 @@ compose-material3 = { group = "androidx.compose.material3", name = "material3", 
 compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "compose" }
 compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "compose" }
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "compose" }
-compose-navigation = { group = "androidx.navigation", name = "navigation-compose", version = "2.8.5" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 
 # Lifecycle
 lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 
 # Kotlin Coroutines
 coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# Kotlinx Serialization
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization-json" }
 
 # GeckoView
 geckoview = { group = "org.mozilla.geckoview", name = "geckoview", version.ref = "geckoview" }
@@ -37,4 +39,5 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 

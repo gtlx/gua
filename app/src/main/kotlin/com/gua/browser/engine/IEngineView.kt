@@ -55,8 +55,6 @@ interface IEngineView {
  * 引擎设置值对象
  */
 data class EngineSettings(
-    val nightMode: Boolean = false,
-    val adblockEnabled: Boolean = true,
     val javascriptEnabled: Boolean = true,
     val desktopMode: Boolean = false,
     val privateMode: Boolean = false,

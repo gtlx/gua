@@ -38,12 +38,14 @@ import com.gua.browser.ui.TabSwitcherPanel
 import com.gua.browser.ui.FindInPagePanel
 import com.gua.browser.ui.bookmark.BookmarkScreen
 import com.gua.browser.ui.bookmark.HistoryScreen
+import com.gua.browser.ui.download.DownloadScreen
 import com.gua.browser.ui.home.StartPage
 import com.gua.browser.ui.settings.ScriptManagerScreen
 import com.gua.browser.ui.settings.SettingsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 
 /**
@@ -108,6 +110,12 @@ fun BrowserContent() {
     val stateSaver = remember { BrowserStateSaver(context) }
 
     // 加载持久化的状态
+    // 初始化 WebExtension 控制器（GeckoRuntime 单例）
+    LaunchedEffect(Unit) {
+        val runtime = GeckoRuntime.getDefault(context)
+        app.scriptManager.setRuntime(runtime)
+    }
+
     LaunchedEffect(Unit) {
         stateSaver.load(state)
     }
@@ -131,9 +139,13 @@ fun BrowserContent() {
             .collect { stateSaver.save(state) }
     }
 
-    // 桌面/隐私模式变化时实时应用到引擎
-    LaunchedEffect(state.isDesktopMode, state.isIncognito, state.isNightMode) {
+    // 桌面/隐私模式变化 → 重建会话（重载页面）
+    LaunchedEffect(state.isDesktopMode, state.isIncognito) {
         state.applyDesktopMode()
+    }
+    // 夜间模式变化 → 仅切换 WebExtension CSS（不重载页面）
+    LaunchedEffect(state.isNightMode) {
+        app.scriptManager.injector.installNightMode(state.isNightMode)
     }
 
     // 返回键处理
@@ -145,6 +157,7 @@ fun BrowserContent() {
             state.showScriptManager -> state.showScriptManager = false
             state.showBookmarks -> state.showBookmarks = false
             state.showHistory -> state.showHistory = false
+            state.showDownloads -> state.showDownloads = false
             state.showTabSwitcher -> state.showTabSwitcher = false
             state.showQuickSettings -> state.showQuickSettings = false
             state.showFindInPage -> state.showFindInPage = false
@@ -155,6 +168,27 @@ fun BrowserContent() {
         }
     }
 
+    // 权限请求对话框
+    state.pendingPermission?.let { perm ->
+        AlertDialog(
+            onDismissRequest = { state.respondToPermission(false) },
+            title = { Text("权限请求") },
+            text = {
+                Text("${perm.uri}\n\n请求 ${perm.typeName} 权限")
+            },
+            confirmButton = {
+                TextButton(onClick = { state.respondToPermission(true) }) {
+                    Text("允许", color = Color(0xFF1565C0))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { state.respondToPermission(false) }) {
+                    Text("拒绝", color = Color(0xFFE53935))
+                }
+            }
+        )
+    }
+
     // 主题
     val isDark = state.isNightMode
     GuaBrowserTheme(darkTheme = isDark) {
@@ -163,141 +197,146 @@ fun BrowserContent() {
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ===== 正常浏览模式 =====
+            // ===== 正常浏览模式（含快速设置面板，共享系统栏内边距）=====
             if (!state.showTabSwitcher && !state.showScriptManager) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.systemBars)
                 ) {
-                    // 顶部工具栏
-                    if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) {
-                        BuildToolbar(state, engineManager)
-                    }
-
-                    // Web 内容区 — 引擎始终存在，StartPage 作为覆盖层
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
+                    Column(
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        // 引擎视图始终创建（确保 engineManager 不为 null）
-                        AndroidView(
-                            factory = { ctx ->
-                                FrameLayout(ctx).apply {
-                                    layoutParams = ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    val mgr = EngineManager(this)
-                                    engineManager = mgr
-                                    val tab = mgr.createTab("about:blank")
-                                    if (tab != null) {
-                                        state.bindEngine(tab.engine)
-                                        state.updateTabList(mgr)
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        // StartPage 覆盖层（只在主页且未加载时显示）
-                        if (state.isHomePage && !state.isUrlFocused && !state.isLoading) {
-                            StartPage(
-                                state = state,
-                                onOpenUrl = { url ->
-                                    state.showHomePage = false
-                                    engineManager?.activeTab?.engine?.loadUrl(url)
-                                },
-                                onFocusSearch = { state.isUrlFocused = true }
-                            )
+                        // 顶部工具栏
+                        if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) {
+                            BuildToolbar(state, engineManager)
                         }
 
-                        // 进度条
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = state.progress in 1..99,
-                            enter = fadeIn(),
-                            exit = fadeOut()
+                        // Web 内容区
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
                         ) {
-                            LinearProgressIndicator(
-                                progress = { state.progress / 100f },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color.Transparent),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = Color.Transparent,
+                            AndroidView(
+                                factory = { ctx ->
+                                    FrameLayout(ctx).apply {
+                                        layoutParams = ViewGroup.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
+                                        val mgr = EngineManager(this)
+                                        engineManager = mgr
+                                        val tab = mgr.createTab("about:blank")
+                                        if (tab != null) {
+                                            state.bindEngine(tab.engine)
+                                            state.updateTabList(mgr)
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
                             )
-                        }
-                    }
 
-                    // 底部工具栏
-                    if (state.toolbarPosition == BrowserState.ToolbarPos.BOTTOM) {
-                        BuildToolbar(state, engineManager)
-                    }
-                }
-
-                // 快速设置浮层
-                QuickSettingsPanel(
-                    visible = state.showQuickSettings,
-                    isNightMode = state.isNightMode,
-                    isAdblockEnabled = state.isAdblockEnabled,
-                    isDesktopMode = state.isDesktopMode,
-                    isIncognito = state.isIncognito,
-                    toolbarAtTop = state.toolbarPosition == BrowserState.ToolbarPos.TOP,
-                    onNightModeChange = { state.isNightMode = it; stateSaver.save(state) },
-                    onAdblockChange = { state.isAdblockEnabled = it; stateSaver.save(state) },
-                    onDesktopModeChange = {
-                        state.isDesktopMode = it
-                        stateSaver.save(state)
-                    },
-                    onIncognitoChange = {
-                        state.isIncognito = it
-                        stateSaver.save(state)
-                    },
-                    onScriptManager = {
-                        state.showQuickSettings = false
-                        state.showScriptManager = true
-                    },
-                    onBookmarks = {
-                        state.showQuickSettings = false
-                        state.showBookmarks = true
-                    },
-                    onHistory = {
-                        state.showQuickSettings = false
-                        state.showHistory = true
-                    },
-                    onFindInPage = {
-                        state.showQuickSettings = false
-                        state.showFindInPage = true
-                    },
-                    onAddToHomeScreen = {
-                        state.showQuickSettings = false
-                        ShortcutHelper.createShortcut(
-                            context,
-                            state.pageTitle.ifEmpty { "GuaBrowser" },
-                            state.url.ifEmpty { "about:blank" }
-                        )
-                    },
-                    onShare = {
-                        state.showQuickSettings = false
-                        val url = state.url
-                        if (url.isNotBlank()) {
-                            val shareIntent = android.content.Intent().apply {
-                                action = android.content.Intent.ACTION_SEND
-                                putExtra(android.content.Intent.EXTRA_TEXT, url)
-                                type = "text/plain"
+                            if (state.isHomePage && !state.isUrlFocused && !state.isLoading) {
+                                StartPage(
+                                    state = state,
+                                    onOpenUrl = { url ->
+                                        state.showHomePage = false
+                                        engineManager?.activeTab?.engine?.loadUrl(url)
+                                    },
+                                    onFocusSearch = { state.isUrlFocused = true }
+                                )
                             }
-                            context.startActivity(
-                                android.content.Intent.createChooser(shareIntent, "分享")
-                            )
+
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = state.progress in 1..99,
+                                enter = fadeIn(),
+                                exit = fadeOut()
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = { state.progress / 100f },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color.Transparent),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.Transparent,
+                                )
+                            }
                         }
-                    },
-                    onSettings = {
-                        state.showQuickSettings = false
-                        state.showSettings = true
-                    },
-                    onDismiss = { state.showQuickSettings = false }
-                )
+
+                        // 底部工具栏
+                        if (state.toolbarPosition == BrowserState.ToolbarPos.BOTTOM) {
+                            BuildToolbar(state, engineManager)
+                        }
+                    }
+
+                    // 快速设置浮层 — 与工具栏共享内边距，紧贴工具栏
+                    QuickSettingsPanel(
+                        visible = state.showQuickSettings,
+                        isNightMode = state.isNightMode,
+                        isAdblockEnabled = state.isAdblockEnabled,
+                        isDesktopMode = state.isDesktopMode,
+                        isIncognito = state.isIncognito,
+                        toolbarAtTop = state.toolbarPosition == BrowserState.ToolbarPos.TOP,
+                        onNightModeChange = { state.isNightMode = it; stateSaver.save(state) },
+                        onAdblockChange = { state.isAdblockEnabled = it; stateSaver.save(state) },
+                        onDesktopModeChange = {
+                            state.isDesktopMode = it
+                            stateSaver.save(state)
+                        },
+                        onIncognitoChange = {
+                            state.isIncognito = it
+                            stateSaver.save(state)
+                        },
+                        onScriptManager = {
+                            state.showQuickSettings = false
+                            state.showScriptManager = true
+                        },
+                        onBookmarks = {
+                            state.showQuickSettings = false
+                            state.showBookmarks = true
+                        },
+                        onHistory = {
+                            state.showQuickSettings = false
+                            state.showHistory = true
+                        },
+                        onDownloads = {
+                            state.showQuickSettings = false
+                            state.showDownloads = true
+                        },
+                        onFindInPage = {
+                            state.showQuickSettings = false
+                            state.showFindInPage = true
+                        },
+                        onAddToHomeScreen = {
+                            state.showQuickSettings = false
+                            ShortcutHelper.createShortcut(
+                                context,
+                                state.pageTitle.ifEmpty { "GuaBrowser" },
+                                state.url.ifEmpty { "about:blank" }
+                            )
+                        },
+                        onShare = {
+                            state.showQuickSettings = false
+                            val url = state.url
+                            if (url.isNotBlank()) {
+                                val shareIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TEXT, url)
+                                    type = "text/plain"
+                                }
+                                context.startActivity(
+                                    android.content.Intent.createChooser(shareIntent, "分享")
+                                )
+                            }
+                        },
+                        onSettings = {
+                            state.showQuickSettings = false
+                            state.showSettings = true
+                        },
+                        onDismiss = { state.showQuickSettings = false }
+                    )
+                }
             }
 
             // ===== 标签切换界面 =====
@@ -347,6 +386,13 @@ fun BrowserContent() {
                         state.showBookmarks = false
                     },
                     onDismiss = { state.showBookmarks = false }
+                )
+            }
+
+            // ===== 下载界面 =====
+            if (state.showDownloads) {
+                DownloadScreen(
+                    onDismiss = { state.showDownloads = false }
                 )
             }
 

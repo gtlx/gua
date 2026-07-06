@@ -148,6 +148,17 @@ private fun MainSettingsScreen(
                 )
             }
 
+            // 功能
+            item { SectionTitle("功能") }
+            item {
+                SettingsItem(
+                    icon = Icons.Outlined.Download,
+                    title = "下载管理",
+                    subtitle = "查看和管理下载的文件",
+                    onClick = { state.showDownloads = true; onDismiss() }
+                )
+            }
+
             // 隐私与安全
             item { SectionTitle("隐私与安全") }
             item {
@@ -205,12 +216,12 @@ private fun MainSettingsScreen(
             item {
                 val exportScope = rememberCoroutineScope()
                 val exportLauncher = rememberLauncherForActivityResult(
-                    ActivityResultContracts.CreateDocument("application/json")
+                    ActivityResultContracts.CreateDocument("application/zip")
                 ) { uri ->
                     if (uri != null) {
                         exportScope.launch {
-                            val json = DataManager.exportToJson(state)
-                            DataManager.writeUriContent(context, uri, json)
+                            val data = DataManager.exportToZip(state)
+                            DataManager.writeUriBytes(context, uri, data)
                         }
                     }
                 }
@@ -218,7 +229,7 @@ private fun MainSettingsScreen(
                     icon = Icons.Outlined.FileUpload,
                     title = "导出数据",
                     subtitle = "书签、设置、搜索引擎",
-                    onClick = { exportLauncher.launch("gua_backup.json") }
+                    onClick = { exportLauncher.launch("gua_backup.zip") }
                 )
             }
             item {
@@ -228,8 +239,8 @@ private fun MainSettingsScreen(
                 ) { uri ->
                     if (uri != null) {
                         importScope.launch {
-                            val content = DataManager.readUriContent(context, uri)
-                            if (content != null) DataManager.importFromJson(content, state)
+                            val data = DataManager.readUriBytes(context, uri)
+                            if (data != null) DataManager.importFromZip(data, state)
                         }
                     }
                 }
@@ -237,7 +248,7 @@ private fun MainSettingsScreen(
                     icon = Icons.Outlined.Download,
                     title = "导入数据",
                     subtitle = "恢复书签和设置",
-                    onClick = { importLauncher.launch(arrayOf("application/json")) }
+                    onClick = { importLauncher.launch(arrayOf("application/zip")) }
                 )
             }
 

@@ -40,6 +40,7 @@ class BrowserState {
     var showSettings by mutableStateOf(false)
     var showBookmarks by mutableStateOf(false)
     var showHistory by mutableStateOf(false)
+    var showDownloads by mutableStateOf(false)
     var showHomePage by mutableStateOf(true)
     var showSearchEnginePicker by mutableStateOf(false)
 
@@ -132,12 +133,11 @@ class BrowserState {
             }
 
             override fun onLoadRequest(uri: String): Boolean {
-                // 广告过滤：内置规则 + 自定义规则
                 if (isAdblockEnabled) {
                     if (com.gua.browser.GuaApp.instance.adBlockEngine.shouldBlock(uri)) return false
-                    // 检查自定义规则
-                    for (rule in customAdRules) {
-                        if (rule.enabled && uri.contains(rule.pattern)) return false
+                    val activeRules = customAdRules.filter { it.enabled }.map { it.pattern }
+                    if (activeRules.isNotEmpty()) {
+                        if (com.gua.browser.GuaApp.instance.adBlockEngine.matchesAny(uri, activeRules)) return false
                     }
                 }
                 return true
@@ -186,14 +186,29 @@ class BrowserState {
             }
         })
 
+        engine.setPermissionListener(object : GeckoEngine.PermissionListener {
+            override fun onPermissionRequest(uri: String, type: Int): org.mozilla.geckoview.GeckoResult<Int>? {
+                val typeName = when (type) {
+                    0 -> "地理位置"
+                    1 -> "桌面通知"
+                    2 -> "麦克风"
+                    3 -> "摄像头"
+                    else -> "未知权限"
+                }
+                val result = org.mozilla.geckoview.GeckoResult<Int>()
+                pendingGeckoResult = result
+                pendingPermission = PermissionRequest(uri = uri, type = type, typeName = typeName)
+                return result
+            }
+        })
+
         applyDesktopMode()
     }
 
-    /** 应用引擎设置（桌面模式/隐私/夜间），applySettings 内部会重建会话+重载页面 */
+    /** 应用引擎设置，重建会话以切换 UA/隐私模式 */
     fun applyDesktopMode() {
         currentEngine?.applySettings(
             EngineSettings(
-                nightMode = isNightMode,
                 desktopMode = isDesktopMode,
                 privateMode = isIncognito
             )
@@ -231,6 +246,24 @@ class BrowserState {
         if (index in customAdRules.indices) {
             customAdRules = customAdRules.toMutableList().also { it.removeAt(index) }
         }
+    }
+
+    // ===== 权限请求 =====
+    data class PermissionRequest(
+        val uri: String,
+        val type: Int,
+        val typeName: String
+    )
+    var pendingPermission by mutableStateOf<PermissionRequest?>(null)
+    private var pendingGeckoResult: org.mozilla.geckoview.GeckoResult<Int>? = null
+
+    fun respondToPermission(allow: Boolean) {
+        pendingGeckoResult?.complete(
+            if (allow) org.mozilla.geckoview.GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
+            else org.mozilla.geckoview.GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
+        )
+        pendingGeckoResult = null
+        pendingPermission = null
     }
 
     // ===== 搜索引擎管理 =====

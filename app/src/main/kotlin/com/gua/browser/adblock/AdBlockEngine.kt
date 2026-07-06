@@ -206,6 +206,103 @@ class AdBlockEngine(private val context: Context) {
         defaultRules.forEach { parseAndAddRule(it) }
     }
 
+    // ===== 自定义规则支持 =====
+
+    private val customRules = mutableListOf<CompiledRule>()
+
+    /**
+     * 添加自定义规则
+     */
+    fun addCustomRule(pattern: String) {
+        val compiled = parseRule(pattern, isException = pattern.startsWith("@@"))
+        if (compiled != null) {
+            customRules.add(compiled)
+        }
+    }
+
+    /**
+     * 移除自定义规则
+     */
+    fun removeCustomRule(pattern: String) {
+        customRules.removeAll { it.pattern == pattern }
+    }
+
+    /**
+     * 清空自定义规则
+     */
+    fun clearCustomRules() {
+        customRules.clear()
+    }
+
+    /**
+     * 检查 URL 匹配（含自定义规则）
+     */
+    fun matchesAny(url: String, patterns: List<String>): Boolean {
+        for (pattern in patterns) {
+            val compiled = parseRule(pattern, isException = pattern.startsWith("@@"))
+            if (compiled != null && matchesRule(url, compiled)) {
+                return !compiled.isException
+            }
+        }
+        return false
+    }
+
+    private fun parseRule(pattern: String, isException: Boolean): CompiledRule? {
+        if (pattern.isBlank()) return null
+        var p = pattern.trim()
+        val exc = isException || p.startsWith("@@")
+        if (exc) p = p.removePrefix("@@").trimStart()
+
+        val (ruleType, regex, domainKey) = when {
+            p.startsWith("||") && p.endsWith("^") -> {
+                val domain = p.removePrefix("||").removeSuffix("^")
+                Triple(RuleType.DOMAIN, null, domain)
+            }
+            p.startsWith("|") && p.endsWith("|") -> {
+                Triple(RuleType.EXACT, null, null)
+            }
+            p.startsWith("/") && p.endsWith("/") -> {
+                val regexStr = p.removePrefix("/").removeSuffix("/")
+                Triple(RuleType.REGEX, try { Regex(regexStr) } catch (_: Exception) { null }, null)
+            }
+            p.contains("*") -> {
+                val regexStr = p.replace(".", "\\.").replace("*", ".*")
+                Triple(RuleType.URL_PATTERN, try { Regex(regexStr) } catch (_: Exception) { null }, null)
+            }
+            else -> {
+                val key = p.substringBefore("/").substringBefore(":")
+                Triple(RuleType.PREFIX, null, key.ifBlank { null })
+            }
+        }
+
+        return CompiledRule(
+            pattern = p, type = ruleType, isException = exc,
+            regex = regex, domainKey = domainKey
+        )
+    }
+
+    private fun matchesRule(url: String, rule: CompiledRule): Boolean {
+        return when (rule.type) {
+            RuleType.DOMAIN -> url.contains(rule.pattern)
+            RuleType.EXACT -> url == rule.pattern
+            RuleType.PREFIX -> url.contains(rule.pattern)
+            RuleType.REGEX -> rule.regex?.containsMatchIn(url) ?: false
+            RuleType.URL_PATTERN -> rule.regex?.containsMatchIn(url) ?: false
+        }
+    }
+
+    /**
+     * 检查 URL 是否命中任何自定义规则
+     */
+    fun matchesCustomRule(url: String): Boolean {
+        for (rule in customRules) {
+            if (matchesRule(url, rule)) {
+                return !rule.isException
+            }
+        }
+        return false
+    }
+
     // ===== 测试辅助方法 =====
 
     /**

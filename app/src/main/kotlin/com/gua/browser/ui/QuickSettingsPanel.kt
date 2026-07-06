@@ -8,12 +8,15 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,21 +24,22 @@ import androidx.compose.ui.unit.sp
 data class QuickItem(
     val id: String,
     val label: String,
-    val emoji: String
+    val icon: ImageVector
 )
 
 private val items = listOf(
-    QuickItem("night_mode", "夜间", "🌙"),
-    QuickItem("adblock", "广告", "🚫"),
-    QuickItem("desktop", "桌面", "🖥️"),
-    QuickItem("incognito", "无痕", "👤"),
-    QuickItem("scripts", "脚本", "📜"),
-    QuickItem("bookmarks", "书签", "🔖"),
-    QuickItem("history", "历史", "📋"),
-    QuickItem("add_to_home", "快捷", "🏠"),
-    QuickItem("share", "分享", "📤"),
-    QuickItem("find", "查找", "🔍"),
-    QuickItem("settings", "设置", "⚙️"),
+    QuickItem("night_mode", "夜间", Icons.Outlined.DarkMode),
+    QuickItem("adblock", "广告", Icons.Outlined.Block),
+    QuickItem("desktop", "桌面", Icons.Outlined.DesktopWindows),
+    QuickItem("incognito", "无痕", Icons.Outlined.PrivateConnectivity),
+    QuickItem("scripts", "脚本", Icons.Outlined.Code),
+    QuickItem("bookmarks", "书签", Icons.Outlined.BookmarkBorder),
+    QuickItem("history", "历史", Icons.Outlined.History),
+    QuickItem("downloads", "下载", Icons.Outlined.Download),
+    QuickItem("add_to_home", "快捷", Icons.Outlined.AddBox),
+    QuickItem("share", "分享", Icons.Outlined.Share),
+    QuickItem("find", "查找", Icons.Outlined.Search),
+    QuickItem("settings", "设置", Icons.Outlined.Settings),
 )
 
 @Composable
@@ -53,23 +57,24 @@ fun QuickSettingsPanel(
     onScriptManager: () -> Unit,
     onBookmarks: () -> Unit,
     onHistory: () -> Unit,
+    onDownloads: () -> Unit,
     onFindInPage: () -> Unit,
     onShare: () -> Unit,
     onAddToHomeScreen: () -> Unit,
     onSettings: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    // 面板位置：工具栏在顶部时弹出在顶部，在底部时弹出在底部
-    val panelAlignment = if (toolbarAtTop) Alignment.TopCenter else Alignment.BottomCenter
-    val slideAnim = if (toolbarAtTop)
+    val alignToTop = toolbarAtTop
+    val panelAlignment = if (alignToTop) Alignment.TopCenter else Alignment.BottomCenter
+    val slideAnim = if (alignToTop)
         slideInVertically(initialOffsetY = { -it }) + fadeIn()
     else
         slideInVertically(initialOffsetY = { it }) + fadeIn()
-    val slideOutAnim = if (toolbarAtTop)
+    val slideOutAnim = if (alignToTop)
         slideOutVertically(targetOffsetY = { -it }) + fadeOut()
     else
         slideOutVertically(targetOffsetY = { it }) + fadeOut()
-    val shape = if (toolbarAtTop)
+    val shape = if (alignToTop)
         RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp)
     else
         RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)
@@ -85,7 +90,6 @@ fun QuickSettingsPanel(
                 .background(Color.Black.copy(alpha = 0.3f))
                 .clickable(onClick = onDismiss)
         ) {
-            // 面板内容 — 从工具栏方向滑入
             AnimatedVisibility(
                 visible = visible,
                 enter = slideAnim,
@@ -100,7 +104,6 @@ fun QuickSettingsPanel(
                         .padding(16.dp)
                 ) {
                     Column {
-                        // 拖拽指示条
                         Box(
                             modifier = Modifier
                                 .width(36.dp).height(3.dp)
@@ -142,15 +145,21 @@ fun QuickSettingsPanel(
                                                 "scripts" -> onScriptManager()
                                                 "bookmarks" -> onBookmarks()
                                                 "history" -> onHistory()
+                                                "downloads" -> onDownloads()
                                                 "add_to_home" -> onAddToHomeScreen()
                                                 "share" -> onShare()
                                                 "find" -> onFindInPage()
                                                 "settings" -> onSettings()
                                             }
                                         }
-                                        .padding(12.dp)
+                                        .padding(vertical = 10.dp)
                                 ) {
-                                    Text(text = item.emoji, fontSize = 22.sp)
+                                    Icon(
+                                        item.icon,
+                                        contentDescription = item.label,
+                                        tint = fg,
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(item.label, fontSize = 10.sp,
                                         textAlign = TextAlign.Center, color = fg, maxLines = 1)

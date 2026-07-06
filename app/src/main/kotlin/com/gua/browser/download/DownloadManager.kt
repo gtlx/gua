@@ -2,6 +2,7 @@ package com.gua.browser.download
 
 import android.app.DownloadManager
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.os.Environment
 import android.webkit.MimeTypeMap
@@ -22,6 +23,19 @@ class AppDownloadManager(private val context: Context) {
         val fileName: String? = null,
         val mimeType: String? = null,
         val contentLength: Long = -1L
+    )
+
+    data class DownloadStatus(
+        val id: Long,
+        val title: String,
+        val url: String,
+        val status: Int,
+        val progress: Int,
+        val bytesSoFar: Long,
+        val bytesTotal: Long,
+        val localUri: String?,
+        val mimeType: String?,
+        val lastModified: Long
     )
 
     /**
@@ -54,7 +68,6 @@ class AppDownloadManager(private val context: Context) {
         val path = Uri.parse(url).lastPathSegment ?: "download"
         if (path.contains(".")) return path
 
-        // 根据 MIME 类型添加扩展名
         val ext = mimeType?.let {
             MimeTypeMap.getSingleton().getExtensionFromMimeType(it)
         }
@@ -62,32 +75,54 @@ class AppDownloadManager(private val context: Context) {
     }
 
     /**
-     * 查询下载状态
+     * 查询单个下载状态
      */
     fun queryStatus(downloadId: Long): DownloadStatus? {
         val cursor = downloadManager.query(
             DownloadManager.Query().setFilterById(downloadId)
         )
-        cursor.use {
-            if (it.moveToFirst()) {
-                val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                val bytesTotal = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                val bytesSoFar = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                val uri = it.getString(it.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
-
-                return DownloadStatus(
-                    status = status,
-                    progress = if (bytesTotal > 0) (bytesSoFar * 100 / bytesTotal).toInt() else 0,
-                    localUri = uri
-                )
-            }
-        }
-        return null
+        return cursor.use { parseCursor(it).firstOrNull() }
     }
 
-    data class DownloadStatus(
-        val status: Int,
-        val progress: Int,
-        val localUri: String?
-    )
+    /**
+     * 查询所有下载
+     */
+    fun queryAll(): List<DownloadStatus> {
+        val cursor = downloadManager.query(DownloadManager.Query())
+        return cursor.use { parseCursor(it) }
+    }
+
+    /**
+     * 移除下载记录
+     */
+    fun remove(vararg ids: Long) {
+        downloadManager.remove(*ids)
+    }
+
+    private fun parseCursor(cursor: Cursor?): List<DownloadStatus> {
+        if (cursor == null || !cursor.moveToFirst()) return emptyList()
+        val result = mutableListOf<DownloadStatus>()
+        do {
+            result.add(
+                DownloadStatus(
+                    id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID)),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE)) ?: "",
+                    url = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI)) ?: "",
+                    status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)),
+                    progress = 0,
+                    bytesSoFar = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)),
+                    bytesTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)),
+                    localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)),
+                    mimeType = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_MEDIA_TYPE)),
+                    lastModified = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LAST_MODIFIED_TIMESTAMP))
+                ).also { info ->
+                    info.copy(
+                        progress = if (info.bytesTotal > 0)
+                            (info.bytesSoFar * 100 / info.bytesTotal).toInt() else 0
+                    )
+                }
+            )
+        } while (cursor.moveToNext())
+        return result
+    }
 }

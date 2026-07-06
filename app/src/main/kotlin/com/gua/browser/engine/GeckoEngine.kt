@@ -84,18 +84,17 @@ class GeckoEngine(
         }
         geckoSession.permissionDelegate = object : GeckoSession.PermissionDelegate {
             override fun onContentPermissionRequest(session: GeckoSession, perm: GeckoSession.PermissionDelegate.ContentPermission): GeckoResult<Int>? {
-                // 安全：地理位置默认允许，其他高风险权限默认拒绝
-                val allow = try {
-                    val typeField = GeckoSession.PermissionDelegate.ContentPermission::class.java.getField("type")
-                    val permType = typeField.getInt(perm)
-                    permType == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
-                } catch (_: Exception) {
-                    false
-                }
-                return GeckoResult.fromValue(
-                    if (allow) GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
-                    else GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
-                )
+                // type 字段通过反射访问，避免 API 不兼容
+                val permType = try {
+                    val f = GeckoSession.PermissionDelegate.ContentPermission::class.java.getField("type")
+                    f.getInt(perm)
+                } catch (_: Exception) { -1 }
+                val permUri = try {
+                    val f = GeckoSession.PermissionDelegate.ContentPermission::class.java.getField("uri")
+                    f.get(perm) as? String ?: ""
+                } catch (_: Exception) { "" }
+                return permissionListener?.onPermissionRequest(permUri, permType) ?:
+                    GeckoResult.fromValue(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
             }
         }
         geckoView.setSession(geckoSession)
@@ -189,6 +188,15 @@ class GeckoEngine(
     override fun onResume() { if (!geckoSession.isOpen) geckoSession.open(runtime) }
     override fun onPause() {}
     override fun onDestroy() { geckoSession.close() }
+
+    // ===== 权限监听器 =====
+    private var permissionListener: PermissionListener? = null
+    fun setPermissionListener(l: PermissionListener?) { permissionListener = l }
+    fun getPermissionListener(): PermissionListener? = permissionListener
+
+    interface PermissionListener {
+        fun onPermissionRequest(uri: String, type: Int): GeckoResult<Int>?
+    }
 
     // ===== 查找监听器 =====
     private var findListener: FindListener? = null

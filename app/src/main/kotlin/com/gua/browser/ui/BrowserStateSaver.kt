@@ -6,6 +6,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -15,24 +17,24 @@ import org.json.JSONObject
 private val Context.stateStore by preferencesDataStore(name = "browser_state")
 
 class BrowserStateSaver(
-    private val context: Context,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+    private val context: Context
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
-        val KEY_NIGHT_MODE = intPreferencesKey("night_mode")
-        val KEY_ADBLOCK = intPreferencesKey("adblock")
-        val KEY_DESKTOP = intPreferencesKey("desktop")
+        val KEY_NIGHT_MODE = booleanPreferencesKey("night_mode")
+        val KEY_ADBLOCK = booleanPreferencesKey("adblock")
+        val KEY_DESKTOP = booleanPreferencesKey("desktop")
         val KEY_SEARCH_ENGINES = stringPreferencesKey("search_engines")
         val KEY_ACTIVE_SEARCH = intPreferencesKey("active_search")
-        val KEY_TOOLBAR_POS = intPreferencesKey("toolbar_pos")
-        val KEY_SHOW_URLBAR = intPreferencesKey("show_urlbar")
-        val KEY_SHOW_BACK = intPreferencesKey("show_back")
-        val KEY_SHOW_FORWARD = intPreferencesKey("show_forward")
-        val KEY_SHOW_HOME = intPreferencesKey("show_home")
-        val KEY_SHOW_TABS = intPreferencesKey("show_tabs")
-        val KEY_SHOW_MENU = intPreferencesKey("show_menu")
-        val KEY_INCOGNITO = intPreferencesKey("incognito")
+        val KEY_TOOLBAR_POS = booleanPreferencesKey("toolbar_pos")
+        val KEY_SHOW_URLBAR = booleanPreferencesKey("show_urlbar")
+        val KEY_SHOW_BACK = booleanPreferencesKey("show_back")
+        val KEY_SHOW_FORWARD = booleanPreferencesKey("show_forward")
+        val KEY_SHOW_HOME = booleanPreferencesKey("show_home")
+        val KEY_SHOW_TABS = booleanPreferencesKey("show_tabs")
+        val KEY_SHOW_MENU = booleanPreferencesKey("show_menu")
+        val KEY_INCOGNITO = booleanPreferencesKey("incognito")
         val KEY_CUSTOM_AD_RULES = stringPreferencesKey("custom_ad_rules")
     }
 
@@ -41,20 +43,19 @@ class BrowserStateSaver(
     suspend fun load(state: BrowserState) {
         val prefs = context.stateStore.data.first()
 
-        state.isNightMode = prefs[KEY_NIGHT_MODE] == 1
-        state.isAdblockEnabled = prefs[KEY_ADBLOCK] != 0
-        state.isDesktopMode = prefs[KEY_DESKTOP] == 1
-        state.isIncognito = prefs[KEY_INCOGNITO] == 1
-        state.toolbarPosition = if (prefs[KEY_TOOLBAR_POS] == 1)
+        state.isNightMode = prefs[KEY_NIGHT_MODE] ?: false
+        state.isAdblockEnabled = prefs[KEY_ADBLOCK] ?: true
+        state.isDesktopMode = prefs[KEY_DESKTOP] ?: false
+        state.isIncognito = prefs[KEY_INCOGNITO] ?: false
+        state.toolbarPosition = if (prefs[KEY_TOOLBAR_POS] == true)
             BrowserState.ToolbarPos.TOP else BrowserState.ToolbarPos.BOTTOM
-        state.showUrlBar = (prefs[KEY_SHOW_URLBAR] ?: 1) == 1
-        state.showBackBtn = (prefs[KEY_SHOW_BACK] ?: 0) == 1
-        state.showForwardBtn = (prefs[KEY_SHOW_FORWARD] ?: 0) == 1
-        state.showHomeBtn = (prefs[KEY_SHOW_HOME] ?: 1) == 1
-        state.showTabsBtn = (prefs[KEY_SHOW_TABS] ?: 1) == 1
-        state.showMenuBtn = (prefs[KEY_SHOW_MENU] ?: 1) == 1
+        state.showUrlBar = prefs[KEY_SHOW_URLBAR] ?: true
+        state.showBackBtn = prefs[KEY_SHOW_BACK] ?: false
+        state.showForwardBtn = prefs[KEY_SHOW_FORWARD] ?: false
+        state.showHomeBtn = prefs[KEY_SHOW_HOME] ?: true
+        state.showTabsBtn = prefs[KEY_SHOW_TABS] ?: true
+        state.showMenuBtn = prefs[KEY_SHOW_MENU] ?: true
 
-        // 搜索引擎
         val enginesJson = prefs[KEY_SEARCH_ENGINES]
         if (enginesJson != null) {
             try {
@@ -73,7 +74,6 @@ class BrowserStateSaver(
         }
         state.activeSearchEngineIndex = prefs[KEY_ACTIVE_SEARCH] ?: 0
 
-        // 自定义广告规则
         val rulesJson = prefs[KEY_CUSTOM_AD_RULES]
         if (rulesJson != null) {
             try {
@@ -96,17 +96,17 @@ class BrowserStateSaver(
         saveJob = scope.launch {
             delay(300)
             context.stateStore.edit { prefs ->
-                prefs[KEY_NIGHT_MODE] = if (state.isNightMode) 1 else 0
-                prefs[KEY_ADBLOCK] = if (state.isAdblockEnabled) 1 else 0
-                prefs[KEY_DESKTOP] = if (state.isDesktopMode) 1 else 0
-                prefs[KEY_INCOGNITO] = if (state.isIncognito) 1 else 0
-                prefs[KEY_TOOLBAR_POS] = if (state.toolbarPosition == BrowserState.ToolbarPos.TOP) 1 else 0
-                prefs[KEY_SHOW_URLBAR] = if (state.showUrlBar) 1 else 0
-                prefs[KEY_SHOW_BACK] = if (state.showBackBtn) 1 else 0
-                prefs[KEY_SHOW_FORWARD] = if (state.showForwardBtn) 1 else 0
-                prefs[KEY_SHOW_HOME] = if (state.showHomeBtn) 1 else 0
-                prefs[KEY_SHOW_TABS] = if (state.showTabsBtn) 1 else 0
-                prefs[KEY_SHOW_MENU] = if (state.showMenuBtn) 1 else 0
+                prefs[KEY_NIGHT_MODE] = state.isNightMode
+                prefs[KEY_ADBLOCK] = state.isAdblockEnabled
+                prefs[KEY_DESKTOP] = state.isDesktopMode
+                prefs[KEY_INCOGNITO] = state.isIncognito
+                prefs[KEY_TOOLBAR_POS] = state.toolbarPosition == BrowserState.ToolbarPos.TOP
+                prefs[KEY_SHOW_URLBAR] = state.showUrlBar
+                prefs[KEY_SHOW_BACK] = state.showBackBtn
+                prefs[KEY_SHOW_FORWARD] = state.showForwardBtn
+                prefs[KEY_SHOW_HOME] = state.showHomeBtn
+                prefs[KEY_SHOW_TABS] = state.showTabsBtn
+                prefs[KEY_SHOW_MENU] = state.showMenuBtn
                 prefs[KEY_ACTIVE_SEARCH] = state.activeSearchEngineIndex
 
                 val arr = JSONArray()
@@ -119,7 +119,6 @@ class BrowserStateSaver(
                 }
                 prefs[KEY_SEARCH_ENGINES] = arr.toString()
 
-                // 自定义广告规则
                 val rulesArr = JSONArray()
                 state.customAdRules.forEach { rule ->
                     rulesArr.put(JSONObject().apply {
@@ -130,5 +129,10 @@ class BrowserStateSaver(
                 prefs[KEY_CUSTOM_AD_RULES] = rulesArr.toString()
             }
         }
+    }
+
+    fun destroy() {
+        saveJob?.cancel()
+        scope.cancel()
     }
 }
