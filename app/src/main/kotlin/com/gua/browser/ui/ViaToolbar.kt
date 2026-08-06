@@ -37,8 +37,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-
 /**
  * Via 风格工具栏
  *
@@ -113,8 +111,6 @@ fun ViaToolbar(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // 可滚动输入框
-                val scrollState = rememberScrollState()
                 val focusRequester = remember { FocusRequester() }
                 Box(
                     modifier = Modifier
@@ -128,7 +124,6 @@ fun ViaToolbar(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight()
-                            .horizontalScroll(scrollState)
                             .focusRequester(focusRequester),
                         singleLine = true,
                         textStyle = TextStyle(
@@ -158,7 +153,6 @@ fun ViaToolbar(
                 }
                 LaunchedEffect(isFocused) {
                     if (isFocused) {
-                        delay(100)
                         focusRequester.requestFocus()
                     }
                 }

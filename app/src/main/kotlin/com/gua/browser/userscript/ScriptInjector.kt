@@ -2,26 +2,16 @@ package com.gua.browser.userscript
 
 import android.content.Context
 import android.util.Log
+import com.gua.browser.core.network.HttpClient
+import com.gua.browser.userscript.gmapi.GMApiBridge
+import kotlinx.coroutines.runBlocking
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.WebExtension
 import org.mozilla.geckoview.WebExtensionController
+import org.json.JSONObject
 import java.io.File
 
-/**
- * 油猴脚本注入器
- *
- * 利用 GeckoView 的 WebExtension API 将用户脚本注册为
- * 原生 content_scripts。利用 Gecko 的扩展机制实现真正的
- * 隔离世界、document_start 注入、CSP 穿透。
- *
- * 核心流程：
- *   1. 为用户脚本生成临时 WebExtension 目录
- *   2. 包含 manifest.json 声明 content_scripts
- *   3. 包含 wrapper.js 注入 GM_API 桥接
- *   4. 通过 GeckoRuntime.registerWebExtension 注册
- *   5. 后续通过 browser.runtime 消息通信
- */
 class ScriptInjector(private val context: Context) {
 
     companion object {
@@ -32,65 +22,41 @@ class ScriptInjector(private val context: Context) {
     private val registeredExtensions = mutableMapOf<Long, WebExtension>()
     private var runtime: GeckoRuntime? = null
 
-    /**
-     * 设置 WebExtension 控制器（从 GeckoRuntime 获取）
-     */
     fun setRuntime(runtime: GeckoRuntime) {
         this.runtime = runtime
     }
 
     fun getRuntime(): GeckoRuntime? = runtime
 
-    /**
-     * 从 ScriptRepository 中安装或更新所有已启用的脚本
-     */
-    fun installAll(repository: ScriptRepository) {
+    fun installAll(repository: ScriptRepository, apiBridge: GMApiBridge) {
         repository.scripts.value.forEach { script ->
-            if (script.enabled) {
-                installScript(script)
-            }
+            if (script.enabled) installScript(script, apiBridge)
         }
     }
 
-    /**
-     * 安装单个用户脚本为 WebExtension
-     */
-    fun installScript(script: UserScript) {
-        // 如果已经注册，先卸载
+    fun installScript(script: UserScript, apiBridge: GMApiBridge) {
         uninstallScript(script.id)
-
         try {
             val extDir = createExtensionDir(script)
             val uri = extDir.toURI().toString()
-            try {
-                val controller = runtime?.webExtensionController
-                val result: GeckoResult<WebExtension>? = controller?.install(uri)
-                result?.accept { ext: WebExtension? ->
+            val controller = runtime?.webExtensionController
+            controller?.install(uri)?.accept(object : org.mozilla.geckoview.GeckoResult.Consumer<WebExtension> {
+                override fun accept(ext: WebExtension?) {
                     if (ext != null) {
                         registeredExtensions[script.id] = ext
+                        ext.setMessageDelegate(NativeMessageDelegate(apiBridge), "gua_browser")
                         Log.d(TAG, "已安装: ${script.name} v${script.version}")
                     }
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "安装失败: ${script.name}", e)
-            }
+            })
         } catch (e: Exception) {
-            Log.e(TAG, "安装脚本失败: ${script.name}", e)
+            Log.e(TAG, "安装失败: ${script.name}", e)
         }
     }
 
-    /**
-     * 卸载脚本
-     */
     fun uninstallScript(scriptId: Long) {
         val ext = registeredExtensions.remove(scriptId) ?: return
-        try {
-            runtime?.webExtensionController?.let { controller ->
-                controller.uninstall(ext)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "卸载失败: $scriptId", e)
-        }
+        try { runtime?.webExtensionController?.uninstall(ext) } catch (_: Exception) {}
         cleanupExtensionDir(scriptId)
     }
 
@@ -99,47 +65,58 @@ class ScriptInjector(private val context: Context) {
         if (dir.exists()) dir.deleteRecursively()
     }
 
-    /**
-     * 重新加载所有脚本
-     */
-    fun reloadAll(repository: ScriptRepository) {
+    fun reloadAll(repository: ScriptRepository, apiBridge: GMApiBridge) {
         registeredExtensions.keys.toList().forEach { uninstallScript(it) }
-        installAll(repository)
+        installAll(repository, apiBridge)
     }
 
-    /**
-     * 为用户脚本创建临时 WebExtension 目录
-     *
-     * 生成的 manifest.json 示例：
-     * {
-     *   "manifest_version": 2,
-     *   "name": "示例脚本",
-     *   "version": "1.0.0",
-     *   "content_scripts": [{
-     *     "matches": ["*://star.example.com/"],
-     *     "js": ["gm-wrapper.js"],
-     *     "run_at": "document_end"
-     *   }]
-     * }
-     */
     private fun createExtensionDir(script: UserScript): File {
+        val scriptId = script.id
         val baseDir = File(context.cacheDir, EXTENSION_DIR)
-        val scriptDir = File(baseDir, script.id.toString())
-
-        // 清理旧的
-        if (scriptDir.exists()) {
-            scriptDir.deleteRecursively()
-        }
-
+        val scriptDir = File(baseDir, scriptId.toString())
+        if (scriptDir.exists()) scriptDir.deleteRecursively()
         scriptDir.mkdirs()
 
-        // 1. 创建 manifest.json
+        // 下载 @require 依赖
+        val requireFiles = mutableListOf<String>()
+        runBlocking {
+            script.requires.forEach { url ->
+                try {
+                    val resp = HttpClient.execute(HttpClient.Request(url = url, timeout = 10000))
+                    if (resp.statusCode == 200) {
+                        val fileName = "require_${url.hashCode().toUInt()}.js"
+                        File(scriptDir, fileName).writeText(resp.body)
+                        requireFiles.add(fileName)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "下载 @require 失败: $url", e)
+                }
+            }
+        }
+
+        // 下载 @resource
+        runBlocking {
+            script.resources.forEach { (name, url) ->
+                try {
+                    val resp = HttpClient.execute(HttpClient.Request(url = url, timeout = 10000))
+                    if (resp.statusCode == 200) {
+                        File(scriptDir, "res_$name").writeText(resp.body)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+
+        // manifest.json
         val matchesJson = buildJsonArray(script.matches + script.includes)
         val excludesJson = buildJsonArray(script.excludes)
         val runAt = when (script.runAt) {
             RunAt.DOCUMENT_START -> "document_start"
             RunAt.DOCUMENT_END -> "document_end"
             RunAt.DOCUMENT_IDLE -> "document_idle"
+        }
+        val jsFiles = buildString {
+            requireFiles.forEach { appendLine("""    ,"$it"""") }
+            appendLine("""    ,"gm-wrapper.js"""")
         }
 
         val manifest = buildString {
@@ -148,117 +125,204 @@ class ScriptInjector(private val context: Context) {
             appendLine("  \"name\": \"${escapeJson(script.name)}\",")
             appendLine("  \"version\": \"${escapeJson(script.version)}\",")
             appendLine("  \"description\": \"${escapeJson(script.description ?: "")}\",")
+            appendLine("  \"applications\": {\"gecko\": {\"id\": \"userscript_${scriptId}@gua\"}},")
             appendLine("  \"content_scripts\": [{")
             appendLine("    \"matches\": ${matchesJson},")
             if (script.excludes.isNotEmpty()) {
                 appendLine("    \"exclude_matches\": ${excludesJson},")
             }
-            appendLine("    \"js\": [\"gm-wrapper.js\"],")
+            appendLine("    \"all_frames\": ${!script.noframes},")
+            appendLine("    \"js\": [${jsFiles.trim().removePrefix(",")}],")
             appendLine("    \"run_at\": \"${runAt}\"")
             appendLine("  }],")
             appendLine("  \"permissions\": [")
-            appendLine("    \"<all_urls>\"")
-            if (script.grants.any { it.contains("GM_xmlhttpRequest", true) }) {
-                appendLine("    ,\"webRequest\"")
-                appendLine("    ,\"webRequestBlocking\"")
-            }
+            appendLine("    \"<all_urls>\",")
+            appendLine("    \"nativeMessaging\"")
             appendLine("  ]")
             appendLine("}")
         }
-
         File(scriptDir, "manifest.json").writeText(manifest)
 
-        // 2. 创建 gm-wrapper.js
         val wrapperJs = generateWrapperJs(script)
         File(scriptDir, "gm-wrapper.js").writeText(wrapperJs)
 
         return scriptDir
     }
 
-    /**
-     * 生成 GM API 包装器 + 用户脚本主体
-     *
-     * 通过 browser.runtime.sendMessage 与原生侧通信，
-     * 实现 GM_* 功能。
-     */
     private fun generateWrapperJs(script: UserScript): String {
+        val grants = script.grants
         return buildString {
             appendLine("(function() {")
             appendLine("  'use strict;'")
             appendLine()
-            appendLine("  // ===== GM_API 桥接 ===== ")
-            appendLine("  const browser = window.browser || window.chrome;")
+            appendLine("  var __gm_pending = {};")
+            appendLine("  var __gm_native = typeof browser !== 'undefined' && browser.runtime && browser.runtime.sendNativeMessage;")
             appendLine()
-
-            // 根据 @grant 生成对应 API
-            val grants = script.grants
+            appendLine("  function __gm_sendNative(api, args) {")
+            appendLine("    var msgId = 'cb_' + Date.now() + '_' + Math.random();")
+            appendLine("    return new Promise(function(resolve) {")
+            appendLine("      __gm_pending[msgId] = resolve;")
+            appendLine("      try {")
+            appendLine("        browser.runtime.sendNativeMessage('gua_browser', {")
+            appendLine("          type: 'gm_api', id: msgId, api: api, args: args")
+            appendLine("        }).then(function(resp) {")
+            appendLine("          var cb = __gm_pending[resp.id || msgId];")
+            appendLine("          if (cb) { cb(resp); delete __gm_pending[resp.id || msgId]; }")
+            appendLine("        });")
+            appendLine("      } catch(e) {")
+            appendLine("        var cb = __gm_pending[msgId];")
+            appendLine("        if (cb) { cb({error: e.message}); delete __gm_pending[msgId]; }")
+            appendLine("      }")
+            appendLine("    });")
+            appendLine("  }")
+            appendLine()
 
             // unsafeWindow
             if (grants.any { it.equals("unsafeWindow", true) }) {
-                appendLine("  var unsafeWindow = window;")
+                appendLine("  var unsafeWindow = window.wrappedJSObject || window;")
                 appendLine()
             }
 
-            // GM_getValue / GM_setValue
+            // GM_getValue (localStorage sync + native global)
             if (grants.any { it.equals("GM_getValue", true) }) {
-                appendLine(gmGetValueImpl())
-            }
-            if (grants.any { it.equals("GM_setValue", true) }) {
-                appendLine(gmSetValueImpl())
-            }
-            if (grants.any { it.equals("GM_deleteValue", true) }) {
-                appendLine(gmDeleteValueImpl())
-            }
-            if (grants.any { it.equals("GM_listValues", true) }) {
-                appendLine(gmListValuesImpl())
+                appendLine("  function GM_getValue(key, defaultVal) {")
+                appendLine("    var raw = localStorage.getItem('__gm_' + key);")
+                appendLine("    if (raw !== null) { try { return JSON.parse(raw); } catch(e) { return raw; } }")
+                appendLine("    return defaultVal;")
+                appendLine("  }")
+                appendLine()
             }
 
-            // GM_xmlhttpRequest
+            // GM_setValue
+            if (grants.any { it.equals("GM_setValue", true) }) {
+                appendLine("  function GM_setValue(key, value) {")
+                appendLine("    localStorage.setItem('__gm_' + key, JSON.stringify(value));")
+                appendLine("    if (__gm_native) __gm_sendNative('GM_setValue', {key: key, value: JSON.stringify(value)});")
+                appendLine("  }")
+                appendLine()
+            }
+
+            // GM_deleteValue
+            if (grants.any { it.equals("GM_deleteValue", true) }) {
+                appendLine("  function GM_deleteValue(key) {")
+                appendLine("    localStorage.removeItem('__gm_' + key);")
+                appendLine("    if (__gm_native) __gm_sendNative('GM_deleteValue', {key: key});")
+                appendLine("  }")
+                appendLine()
+            }
+
+            // GM_listValues
+            if (grants.any { it.equals("GM_listValues", true) }) {
+                appendLine("  function GM_listValues() {")
+                appendLine("    var result = [];")
+                appendLine("    for (var i = 0; i < localStorage.length; i++) {")
+                appendLine("      var key = localStorage.key(i);")
+                appendLine("      if (key.startsWith('__gm_')) result.push(key.substring(5));")
+                appendLine("    }")
+                appendLine("    return result;")
+                appendLine("  }")
+                appendLine()
+            }
+
+            // GM_xmlhttpRequest — always via native
             if (grants.any { it.equals("GM_xmlhttpRequest", true) }) {
-                appendLine(gmXmlHttpRequestImpl())
+                appendLine("  function GM_xmlhttpRequest(details) {")
+                appendLine("    var clean = {};")
+                appendLine("    var cbs = {};")
+                appendLine("    ['onload','onerror','onprogress','ontimeout','onreadystatechange'].forEach(function(k) {")
+                appendLine("      if (typeof details[k] === 'function') { cbs[k] = details[k]; }")
+                appendLine("    });")
+                appendLine("    Object.keys(details).forEach(function(k) {")
+                appendLine("      if (typeof details[k] !== 'function') clean[k] = details[k];")
+                appendLine("    });")
+                appendLine("    __gm_sendNative('GM_xmlhttpRequest', clean).then(function(resp) {")
+                appendLine("      if (resp.error) {")
+                appendLine("        if (cbs.onerror) cbs.onerror(resp);")
+                appendLine("      } else {")
+                appendLine("        if (cbs.onload) cbs.onload(resp);")
+                appendLine("      }")
+                appendLine("    });")
+                appendLine("    return { abort: function() {} };")
+                appendLine("  }")
+                appendLine()
             }
 
             // GM_addStyle
             if (grants.any { it.equals("GM_addStyle", true) }) {
-                appendLine(gmAddStyleImpl())
+                appendLine("  function GM_addStyle(css) {")
+                appendLine("    var s = document.createElement('style');")
+                appendLine("    s.type = 'text/css'; s.textContent = css;")
+                appendLine("    document.head.appendChild(s); return s;")
+                appendLine("  }")
+                appendLine()
             }
 
             // GM_addElement
             if (grants.any { it.equals("GM_addElement", true) }) {
-                appendLine(gmAddElementImpl())
+                appendLine("  function GM_addElement(tag, attrs) {")
+                appendLine("    var el = document.createElement(tag);")
+                appendLine("    if (attrs) Object.keys(attrs).forEach(function(k) { el.setAttribute(k, attrs[k]); });")
+                appendLine("    document.body.appendChild(el); return el;")
+                appendLine("  }")
+                appendLine()
             }
 
-            // GM_notification
+            // GM_notification — via native
             if (grants.any { it.equals("GM_notification", true) }) {
-                appendLine(gmNotificationImpl())
+                appendLine("  function GM_notification(details) {")
+                appendLine("    if (typeof details === 'string') details = {text: details};")
+                appendLine("    if (__gm_native) __gm_sendNative('GM_notification', details);")
+                appendLine("  }")
+                appendLine()
             }
 
-            // GM_setClipboard
+            // GM_setClipboard — via native
             if (grants.any { it.equals("GM_setClipboard", true) }) {
-                appendLine(gmSetClipboardImpl())
+                appendLine("  function GM_setClipboard(text) {")
+                appendLine("    if (__gm_native) __gm_sendNative('GM_setClipboard', {text: text});")
+                appendLine("  }")
+                appendLine()
             }
 
-            // GM_openInTab
+            // GM_openInTab — via native
             if (grants.any { it.equals("GM_openInTab", true) }) {
-                appendLine(gmOpenInTabImpl())
+                appendLine("  function GM_openInTab(url) {")
+                appendLine("    if (__gm_native) __gm_sendNative('GM_openInTab', {url: url});")
+                appendLine("  }")
+                appendLine()
             }
 
             // GM_registerMenuCommand
             if (grants.any { it.equals("GM_registerMenuCommand", true) }) {
-                appendLine(gmRegisterMenuCommandImpl())
+                appendLine("  function GM_registerMenuCommand(name, callback) {")
+                appendLine("    console.log('[GM] Registered menu: ' + name);")
+                appendLine("  }")
+                appendLine()
             }
 
             // GM_log
             if (grants.any { it.equals("GM_log", true) }) {
-                appendLine(gmLogImpl())
+                appendLine("  function GM_log() {")
+                appendLine("    console.log.apply(console, ['[GM]'].concat(Array.prototype.slice.call(arguments)));")
+                appendLine("  }")
+                appendLine()
             }
 
-            // GM_getResourceText / GM_getResourceURL
+            // GM_getResourceText — return pre-fetched content
             if (grants.any { it.equals("GM_getResourceText", true) }) {
-                appendLine(gmGetResourceTextImpl(script.resources))
+                val resText = script.resources.entries.joinToString(",") { (name, _) ->
+                    val content = try { File(context.cacheDir, "$EXTENSION_DIR/${script.id}/res_$name").readText() } catch (_: Exception) { "" }
+                    "'${escapeJson(name)}': '${escapeJson(content)}'"
+                }
+                appendLine("  var __gm_resources_text = {$resText};")
+                appendLine("  function GM_getResourceText(name) { return __gm_resources_text[name] || null; }")
+                appendLine()
             }
+
+            // GM_getResourceURL — return data: URI
             if (grants.any { it.equals("GM_getResourceURL", true) }) {
-                appendLine(gmGetResourceURLImpl(script.resources))
+                appendLine("  function GM_getResourceURL(name) { return __gm_resources_text[name] || null; }")
+                appendLine()
             }
 
             // GM_info
@@ -272,174 +336,6 @@ class ScriptInjector(private val context: Context) {
         }
     }
 
-    // ===== GM_API 实现 =====
-
-    private fun gmGetValueImpl() = """
-        function GM_getValue(key, defaultValue) {
-            var raw = localStorage.getItem('__gm_' + key);
-            if (raw === null) return defaultValue;
-            try { return JSON.parse(raw); } catch(e) { return raw; }
-        }
-    """.trimIndent()
-
-    private fun gmSetValueImpl() = """
-        function GM_setValue(key, value) {
-            localStorage.setItem('__gm_' + key, JSON.stringify(value));
-        }
-    """.trimIndent()
-
-    private fun gmDeleteValueImpl() = """
-        function GM_deleteValue(key) {
-            localStorage.removeItem('__gm_' + key);
-        }
-    """.trimIndent()
-
-    private fun gmListValuesImpl() = """
-        function GM_listValues() {
-            var result = [];
-            for (var i = 0; i < localStorage.length; i++) {
-                var key = localStorage.key(i);
-                if (key.startsWith('__gm_')) {
-                    result.push(key.substring(5));
-                }
-            }
-            return result;
-        }
-    """.trimIndent()
-
-    private fun gmXmlHttpRequestImpl() = """
-        function GM_xmlhttpRequest(details) {
-            var xhr = new XMLHttpRequest();
-            xhr.open(details.method || 'GET', details.url, true);
-            if (details.headers) {
-                Object.keys(details.headers).forEach(function(k) {
-                    xhr.setRequestHeader(k, details.headers[k]);
-                });
-            }
-            xhr.responseType = details.responseType || 'text';
-            xhr.onload = function() {
-                var resp = {
-                    readyState: 4,
-                    responseHeaders: xhr.getAllResponseHeaders(),
-                    responseText: xhr.responseText,
-                    response: xhr.response,
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                    finalUrl: xhr.responseURL
-                };
-                if (details.onload) details.onload(resp);
-            };
-            xhr.onerror = function() {
-                if (details.onerror) details.onerror({ readyState: 4 });
-            };
-            xhr.onprogress = function(e) {
-                if (details.onprogress) details.onprogress(e);
-            };
-            xhr.ontimeout = function() {
-                if (details.ontimeout) details.ontimeout();
-            };
-            xhr.timeout = details.timeout || 0;
-            if (details.data) xhr.send(details.data);
-            else xhr.send();
-            return {
-                abort: function() { xhr.abort(); }
-            };
-        }
-    """.trimIndent()
-
-    private fun gmAddStyleImpl() = """
-        function GM_addStyle(css) {
-            var style = document.createElement('style');
-            style.type = 'text/css';
-            style.textContent = css;
-            document.head.appendChild(style);
-            return style;
-        }
-    """.trimIndent()
-
-    private fun gmAddElementImpl() = """
-        function GM_addElement(tag, attrs) {
-            var el = document.createElement(tag);
-            if (attrs) {
-                Object.keys(attrs).forEach(function(k) {
-                    el.setAttribute(k, attrs[k]);
-                });
-            }
-            document.body.appendChild(el);
-            return el;
-        }
-    """.trimIndent()
-
-    private fun gmNotificationImpl() = """
-        function GM_notification(details) {
-            if (typeof details === 'string') {
-                details = { text: details };
-            }
-            if ('Notification' in window) {
-                try {
-                    new Notification(details.title || '', {
-                        body: details.text || details.body || '',
-                        icon: details.image || details.icon || ''
-                    });
-                } catch(e) {
-                    console.log('GM_notification:', details.text);
-                }
-            } else {
-                console.log('GM_notification:', details.text);
-            }
-        }
-    """.trimIndent()
-
-    private fun gmSetClipboardImpl() = """
-        function GM_setClipboard(text) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text);
-            } else {
-                var ta = document.createElement('textarea');
-                ta.value = text;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-            }
-        }
-    """.trimIndent()
-
-    private fun gmOpenInTabImpl() = """
-        function GM_openInTab(url, options) {
-            var win = window.open(url, '_blank');
-            return win ? { close: function() { win.close(); }, onclose: null } : null;
-        }
-    """.trimIndent()
-
-    private fun gmRegisterMenuCommandImpl() = """
-        var __gm_menu_commands = {};
-        function GM_registerMenuCommand(name, callback) {
-            __gm_menu_commands[name] = callback;
-            console.log('[GM] Registered menu: ' + name);
-        }
-    """.trimIndent()
-
-    private fun gmLogImpl() = """
-        function GM_log() {
-            console.log.apply(console, ['[GM]'].concat(Array.prototype.slice.call(arguments)));
-        }
-    """.trimIndent()
-
-    private fun gmGetResourceTextImpl(resources: Map<String, String>) = """
-        var __gm_resources = ${buildResourceMapJs(resources)};
-        function GM_getResourceText(name) {
-            return __gm_resources[name] || null;
-        }
-    """.trimIndent()
-
-    private fun gmGetResourceURLImpl(resources: Map<String, String>) = """
-        var __gm_resources = ${buildResourceMapJs(resources)};
-        function GM_getResourceURL(name) {
-            return __gm_resources[name] || null;
-        }
-    """.trimIndent()
-
     private fun gmInfoImpl(script: UserScript) = """
         var GM_info = {
             script: {
@@ -447,32 +343,33 @@ class ScriptInjector(private val context: Context) {
                 namespace: '${escapeJson(script.namespace ?: "")}',
                 version: '${escapeJson(script.version)}',
                 description: '${escapeJson(script.description ?: "")}',
-                author: '${escapeJson(script.author ?: "")}'
+                author: '${escapeJson(script.author ?: "")}',
+                matches: ${buildJsonArray(script.matches + script.includes)},
+                grants: ${buildJsonArray(script.grants)}
             },
             scriptHandler: 'GuaBrowser',
             version: '0.1.0'
         };
     """.trimIndent()
 
-    // ===== 辅助函数 =====
-
     private fun buildJsonArray(list: List<String>): String {
         return list.joinToString(",", "[", "]") { "\"${escapeJson(it)}\"" }
     }
 
-    private fun buildResourceMapJs(resources: Map<String, String>): String {
-        return resources.entries.joinToString(",", "{", "}") {
-            "'${escapeJson(it.key)}': '${escapeJson(it.value)}'"
-        }
-    }
-
     private fun escapeJson(str: String): String {
-        return str
-            .replace("\\", "\\\\")
+        return str.replace("\\", "\\\\")
             .replace("\"", "\\\"")
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t")
+    }
+
+    // ===== 原生消息代理 =====
+    private class NativeMessageDelegate(private val apiBridge: GMApiBridge) : WebExtension.MessageDelegate {
+        override fun onMessage(nativeApp: String, message: Any, sender: WebExtension.MessageSender): GeckoResult<Any>? {
+            if (nativeApp != "gua_browser") return null
+            return apiBridge.handleMessage(message)
+        }
     }
 
     // ===== 夜间模式扩展 =====
@@ -514,6 +411,7 @@ class ScriptInjector(private val context: Context) {
             appendLine("  \"manifest_version\": 2,")
             appendLine("  \"name\": \"GuaBrowser Night Mode\",")
             appendLine("  \"version\": \"1.0\",")
+            appendLine("  \"applications\": {\"gecko\": {\"id\": \"nightmode@gua\"}},")
             appendLine("  \"content_scripts\": [{")
             appendLine("    \"matches\": [\"<all_urls>\"],")
             appendLine("    \"js\": [\"night-mode.js\"],")

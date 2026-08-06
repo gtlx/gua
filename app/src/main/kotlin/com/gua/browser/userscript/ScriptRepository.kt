@@ -142,6 +142,8 @@ class ScriptRepository(context: Context) {
             put("include", JSONArray(script.includes))
             put("exclude", JSONArray(script.excludes))
             put("runAt", script.runAt.value)
+            put("noframes", script.noframes)
+            put("require", JSONArray(script.requires))
             put("grant", JSONArray(script.grants))
             put("enabled", script.enabled)
             put("code", script.code)
@@ -160,6 +162,8 @@ class ScriptRepository(context: Context) {
             includes = jsonArrayToList(obj.optJSONArray("include")),
             excludes = jsonArrayToList(obj.optJSONArray("exclude")),
             runAt = RunAt.fromValue(obj.optString("runAt", "document-idle")),
+            noframes = obj.optBoolean("noframes", false),
+            requires = jsonArrayToList(obj.optJSONArray("require")),
             grants = jsonArrayToList(obj.optJSONArray("grant")),
             enabled = obj.optBoolean("enabled", true),
             code = obj.optString("code", "")

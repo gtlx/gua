@@ -157,7 +157,6 @@ fun BrowserContent() {
         when {
             state.showSearchEnginePicker -> state.showSearchEnginePicker = false
             state.showExtensions -> state.showExtensions = false
-            state.showSettings -> state.showSettings = false
             state.showScriptManager -> state.showScriptManager = false
             state.showBookmarks -> state.showBookmarks = false
             state.showHistory -> state.showHistory = false
@@ -166,6 +165,7 @@ fun BrowserContent() {
             state.showQuickSettings -> state.showQuickSettings = false
             state.showFindInPage -> state.showFindInPage = false
             state.showPermissionSettings -> state.showPermissionSettings = false
+            state.showSettings -> state.showSettings = false
             state.isUrlFocused -> state.isUrlFocused = false
             engineManager?.activeTab?.engine?.canGoBack() == true ->
                 engineManager?.activeTab?.engine?.goBack()
@@ -512,25 +512,25 @@ fun BrowserContent() {
                 )
             }
 
-            // ===== 扩展管理界面 =====
+            // ===== 设置界面（底层，sub-screen 在其上层）=====
+            if (state.showSettings) {
+                SettingsScreen(
+                    state = state,
+                    onDismiss = { state.showSettings = false }
+                )
+            }
+
+            // ===== 扩展管理界面（上层）=====
             if (state.showExtensions) {
                 ExtensionScreen(
                     onDismiss = { state.showExtensions = false }
                 )
             }
 
-            // ===== 权限管理界面 =====
+            // ===== 权限管理界面（上层）=====
             if (state.showPermissionSettings) {
                 PermissionScreen(
                     onDismiss = { state.showPermissionSettings = false }
-                )
-            }
-
-            // ===== 设置界面 =====
-            if (state.showSettings) {
-                SettingsScreen(
-                    state = state,
-                    onDismiss = { state.showSettings = false }
                 )
             }
         }

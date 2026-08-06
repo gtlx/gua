@@ -37,6 +37,10 @@ data class UserScript(
     val includes: List<String> = emptyList(),
     val excludes: List<String> = emptyList(),
     val runAt: RunAt = RunAt.DOCUMENT_IDLE,
+    val noframes: Boolean = false,
+
+    /** 外部依赖脚本 URL */
+    val requires: List<String> = emptyList(),
 
     /** 授权 API 列表 */
     val grants: List<String> = emptyList(),

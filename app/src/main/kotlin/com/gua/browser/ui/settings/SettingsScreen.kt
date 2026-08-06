@@ -167,7 +167,7 @@ private fun MainSettingsScreen(
                     icon = Icons.Outlined.Extension,
                     title = "扩展",
                     subtitle = "管理 Firefox 扩展",
-                    onClick = { state.showExtensions = true; onDismiss() }
+                    onClick = { state.showExtensions = true }
                 )
             }
             item {
@@ -175,7 +175,7 @@ private fun MainSettingsScreen(
                     icon = Icons.Outlined.Download,
                     title = "下载管理",
                     subtitle = "查看和管理下载的文件",
-                    onClick = { state.showDownloads = true; onDismiss() }
+                    onClick = { state.showDownloads = true }
                 )
             }
 
@@ -186,7 +186,7 @@ private fun MainSettingsScreen(
                     icon = Icons.Outlined.Lock,
                     title = "权限管理",
                     subtitle = "管理网站权限设置",
-                    onClick = { state.showPermissionSettings = true; onDismiss() }
+                    onClick = { state.showPermissionSettings = true }
                 )
             }
             item {

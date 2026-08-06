@@ -2,6 +2,7 @@ package com.gua.browser.download
 
 import android.app.DownloadManager
 import android.content.Context
+import android.content.SharedPreferences
 import android.database.Cursor
 import android.net.Uri
 import android.os.Environment
@@ -17,6 +18,14 @@ class AppDownloadManager(private val context: Context) {
 
     private val downloadManager =
         context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("download_prefs", Context.MODE_PRIVATE)
+
+    /** 下载子目录（在 Downloads 目录下） */
+    var downloadSubPath: String
+        get() = prefs.getString("download_sub_path", "GuaBrowser") ?: "GuaBrowser"
+        set(value) { prefs.edit().putString("download_sub_path", value).apply() }
 
     data class DownloadRequest(
         val url: String,
@@ -54,7 +63,7 @@ class AppDownloadManager(private val context: Context) {
             )
             setDestinationInExternalPublicDir(
                 Environment.DIRECTORY_DOWNLOADS,
-                "GuaBrowser/$fileName"
+                "$downloadSubPath/$fileName"
             )
             setMimeType(request.mimeType ?: "*/*")
             setAllowedOverMetered(true)

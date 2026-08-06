@@ -57,6 +57,8 @@ object ScriptParser {
             runAt = RunAt.fromValue(
                 directives.getFirst("run-at") ?: "document-idle"
             ),
+            noframes = directives.getAll("noframes").isNotEmpty(),
+            requires = directives.getAll("require"),
 
             grants = directives.getAll("grant"),
             resources = parseResources(directives.getAll("resource")),

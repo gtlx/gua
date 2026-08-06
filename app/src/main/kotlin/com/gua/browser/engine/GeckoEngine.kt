@@ -177,7 +177,16 @@ class GeckoEngine(
             return
         }
         val findFlags = if (forward) 0 else 1 // 1 = backwards
-        geckoSession.finder.find(query, findFlags)
+        geckoSession.finder.find(query, findFlags).then<Unit> { result ->
+            if (result != null) {
+                val total = result.total
+                val current = result.current
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    findListener?.onFindResult(total, current)
+                }
+            }
+            null
+        }
     }
 
     override fun clearFindInPage() {

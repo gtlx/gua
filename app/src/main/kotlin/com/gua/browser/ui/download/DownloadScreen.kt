@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +39,8 @@ fun DownloadScreen(
     val app = context.applicationContext as GuaApp
     var downloads by remember { mutableStateOf<List<AppDownloadManager.DownloadStatus>>(emptyList()) }
     var showDeleteConfirm by remember { mutableStateOf<Long?>(null) }
+    var showPathDialog by remember { mutableStateOf(false) }
+    var pathInput by remember { mutableStateOf(app.downloadManager.downloadSubPath) }
 
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -64,6 +67,10 @@ fun DownloadScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("下载", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
+                    IconButton(onClick = { pathInput = app.downloadManager.downloadSubPath; showPathDialog = true }) {
+                        Icon(Icons.Outlined.Settings, contentDescription = "下载设置",
+                            tint = Color(0xFF666666), modifier = Modifier.size(20.dp))
+                    }
                 }
             }
 
@@ -101,6 +108,36 @@ fun DownloadScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirm = null }) { Text("取消") }
+                }
+            )
+        }
+
+        if (showPathDialog) {
+            AlertDialog(
+                onDismissRequest = { showPathDialog = false },
+                title = { Text("下载路径") },
+                text = {
+                    Column {
+                        Text("保存在 Downloads/ 目录下的子文件夹：", fontSize = 14.sp, color = Color(0xFF666666))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = pathInput,
+                            onValueChange = { pathInput = it },
+                            singleLine = true,
+                            label = { Text("子文件夹名称") }
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (pathInput.isNotBlank()) {
+                            app.downloadManager.downloadSubPath = pathInput
+                        }
+                        showPathDialog = false
+                    }) { Text("确定") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPathDialog = false }) { Text("取消") }
                 }
             )
         }
